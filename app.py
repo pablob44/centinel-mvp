@@ -34,13 +34,19 @@ with tab1:
 
     st.divider()
 
-    # Weekly Spending Overview
+    # Weekly Financial Summary
     st.subheader("Weekly Financial Summary")
-    total_spent = df[df["Amount"] < 0]["Amount"].sum()
-    total_saved = df[df["Amount"] > 0]["Amount"].sum()
-    col4, col5 = st.columns(2)
-    col4.metric("Total Spent", f"€{abs(total_spent):.2f}")
-    col5.metric("Total Saved", f"€{total_saved:.2f}")
+    total_income = df[df["Amount"] > 0]["Amount"].sum()
+    total_expenses = df[df["Amount"] < 0]["Amount"].sum()
+    total_savings_tx = df[df["Category"] == "Savings"]["Amount"].sum()
+    net_savings = total_income + total_expenses  # expenses are negative
+
+    col4, col5, col6 = st.columns(3)
+    col4.metric("Total Income", f"€{total_income:.2f}")
+    col5.metric("Total Expenses", f"€{abs(total_expenses):.2f}")
+    col6.metric("Net Savings (Calc)", f"€{net_savings:.2f}")
+
+    st.metric("Savings Transfers (Tagged)", f"€{total_savings_tx:.2f}")
 
     fig = px.pie(df, values="Amount", names="Category", title="Spending by Category")
     st.plotly_chart(fig)
