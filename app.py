@@ -21,14 +21,41 @@ tab1, tab2, tab3 = st.tabs(["Home", "Bank Analytics", "Learning Hub"])
 
 # --- Home Tab ---
 with tab1:
-    st.title("Personal Finance Dashboard")
-    st.metric("Level", xp_data["level"])
-    st.metric("XP", xp_data["xp"])
-    st.metric("Streak", f"{xp_data['streak_days']} days")
-    st.progress(min(xp_data["xp"] % 100 / 100, 1.0))
-    
-    st.button("Claim Daily XP")
-    st.button("View Weekly Report")
+    st.title("Welcome to Centinel")
+    st.markdown("Your all-in-one hub for financial progress, habits, and personal growth.")
+
+    # Key Stats Row
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Level", xp_data["level"])
+    col2.metric("XP", xp_data["xp"])
+    col3.metric("Streak", f"{xp_data['streak_days']} days")
+
+    st.progress(min(xp_data["xp"] % 100 / 100, 1.0), text="Progress to next level")
+
+    st.divider()
+
+    # Weekly Spending Overview
+    st.subheader("Weekly Financial Summary")
+    total_spent = df[df["Amount"] < 0]["Amount"].sum()
+    total_saved = df[df["Amount"] > 0]["Amount"].sum()
+    col4, col5 = st.columns(2)
+    col4.metric("Total Spent", f"€{abs(total_spent):.2f}")
+    col5.metric("Total Saved", f"€{total_saved:.2f}")
+
+    fig = px.pie(df, values="Amount", names="Category", title="Spending by Category")
+    st.plotly_chart(fig)
+
+    st.divider()
+
+    # Quick Access
+    st.subheader("Quick Access")
+    col6, col7 = st.columns(2)
+    with col6:
+        st.button("Claim Daily XP")
+        st.button("View Weekly Report")
+    with col7:
+        st.button("Connect Bank Account")
+        st.button("Start New Module")
 
 # --- Bank Analytics Tab ---
 with tab2:
