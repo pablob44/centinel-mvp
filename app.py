@@ -14,7 +14,7 @@ df = pd.read_csv("fake_transactions.csv")
 # --- Sidebar User Greeting ---
 st.sidebar.image("https://i.imgur.com/wx2jdkl.png", width=100)
 st.sidebar.title(f"Welcome back, {xp_data['username']}!")
-st.sidebar.markdown(f"**Level:** {xp_data['level']}  
+st.sidebar.markdown(f"**Level:** {xp_data['level']}")
 **XP:** {xp_data['xp']}  
 🔥 Streak: {xp_data['streak_days']} days")
 
