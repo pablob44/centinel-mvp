@@ -1,0 +1,2 @@
+user_id,name,level,goal_tags,has_premium,token_balance,current_path,xp_points,streak_days,achievements
+U001,Jorge,beginner,save_money;get_financial_control,False,3,Budgeting Basics,420,4,budget_created;completed_5_modules;used_token
