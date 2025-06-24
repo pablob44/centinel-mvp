@@ -95,5 +95,28 @@ st.plotly_chart(fig_month, use_container_width=True)
 
 # Section 5: Investment Trend Line
 st.subheader("📈 Investment Activity Over Time")
-invest_df = df[df]()_
+invest_df = df[df["Category"] == "Investments"]
+invest_trend = invest_df.groupby(invest_df["Date"].dt.date)["Amount"].sum().reset_index()
+fig_inv = px.line(invest_trend, x="Date", y="Amount", title="Daily Investment Amounts", markers=True)
+st.plotly_chart(fig_inv, use_container_width=True)
+
+# Section 6: Ratio Tracker (Spend vs Save vs Invest)
+st.subheader("📊 Spending vs Saving vs Investing Ratios")
+df["Day"] = df["Date"].dt.date
+pivot = df[df["Category"].isin(["Savings", "Investments"]) | (df["Amount"] < 0)]
+pivot["Type"] = pivot["Category"].apply(lambda c: "Spend" if c not in ["Savings", "Investments"] else c)
+ratios = pivot.groupby(["Day", "Type"])["Amount"].sum().reset_index()
+ratios = ratios.pivot(index="Day", columns="Type", values="Amount").fillna(0).sort_index()
+fig_ratio = px.area(ratios, title="Daily Financial Flow", labels={"value": "€"}, markers=True)
+st.plotly_chart(fig_ratio, use_container_width=True)
+
+# Final Section: Recommended Modules
+st.subheader("📘 Recommended Modules")
+modules_df["match_score"] = modules_df.apply(lambda row: score_module(row, user_goals, triggers), axis=1)
+top_modules = modules_df.sort_values(by="match_score", ascending=False).head(3)
+if top_modules["match_score"].max() > 0:
+    for title in top_modules["title"]:
+        st.markdown(f"- {title}")
+else:
+    st.info("No relevant modules to recommend right now.")
 
