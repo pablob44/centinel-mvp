@@ -1,16 +1,15 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import numpy as np
+from datetime import datetime, timedelta
 
-# --- Load Data ---
+# Load data
 df = pd.read_csv("fake_transactions.csv")
 df["Date"] = pd.to_datetime(df["Date"])
-
 user_df = pd.read_csv("centinel_user_data.csv")
 modules_df = pd.read_csv("modules.csv")
 
-# --- Behavior Trigger Logic ---
+# Behavior trigger logic
 def derive_behavior_triggers(transactions):
     triggers = set()
     if transactions[transactions["Category"] == "Dining Out"]["Amount"].sum() < -150:
@@ -27,7 +26,7 @@ def derive_behavior_triggers(transactions):
         triggers.add("new_investment_activity")
     return triggers
 
-# --- Module Scoring ---
+# Module match scoring
 def score_module(row, user_goals, user_triggers):
     module_goals = row["goal_tags"].split(";")
     module_triggers = row["behavior_triggers"].split(";")
@@ -35,16 +34,16 @@ def score_module(row, user_goals, user_triggers):
     trigger_match = len(set(module_triggers) & set(user_triggers))
     return goal_match + trigger_match
 
-# --- App Layout ---
-st.set_page_config(page_title="Centinel - Analytics", layout="wide")
-st.title("📊 Spending Analytics")
-
-# --- Load User Info ---
+# User & triggers
 user = user_df.iloc[0]
 user_goals = user["goal_tags"].split(";")
-user_triggers = derive_behavior_triggers(df)
+triggers = derive_behavior_triggers(df)
 
-# --- Sidebar (Developer Notes) ---
+# Layout
+st.set_page_config(page_title="Centinel - Analytics", layout="wide")
+st.title("📊 Centinel Analytics Dashboard")
+
+# Sidebar (developer reference)
 st.sidebar.title("Centinel MVP")
 st.sidebar.subheader(f"Welcome back, {user['name']}")
 st.sidebar.markdown(f"**Level:** {user['level'].capitalize()}")
@@ -52,39 +51,49 @@ st.sidebar.markdown(f"**XP:** {user['xp_points']}")
 st.sidebar.markdown(f"**Streak:** {user['streak_days']} days")
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🧠 Behavior Triggers (Dev Only)")
-st.sidebar.write(", ".join(user_triggers) if user_triggers else "None")
+st.sidebar.write(", ".join(triggers) if triggers else "None")
 
-# --- 1. Last 7 Days Overview ---
-st.subheader("📅 Last 7 Days Overview")
-
-recent_df = df[df["Date"] >= pd.Timestamp.now() - pd.Timedelta(days=7)]
-weekly_total = recent_df["Amount"].sum()
-top_cats = recent_df.groupby("Category")["Amount"].sum().sort_values().head(3)
+# Section 1: Spending Snapshot (7 days)
+st.subheader("💸 Spending Snapshot (Last 7 Days)")
+last_week = df[df["Date"] >= pd.Timestamp.now() - pd.Timedelta(days=7)]
+weekly_total = last_week["Amount"].sum()
+top_cats = last_week.groupby("Category")["Amount"].sum().sort_values().head(3)
 
 col1, col2 = st.columns(2)
 col1.metric("Total Spent", f"€{-weekly_total:.2f}")
 col2.metric("Top Category", top_cats.idxmin() if not top_cats.empty else "N/A")
 
-if not top_cats.empty:
-    fig_week = px.bar(top_cats.reset_index(), x="Category", y="Amount",
-                      title="Top Spending Categories (Last 7 Days)", color="Category")
-    st.plotly_chart(fig_week, use_container_width=True)
+# Section 2: Category Breakdown (last 3 months)
+st.subheader("📊 Spending by Category (3 Months)")
+spending_df = df[df["Amount"] < 0]
+cat_totals = spending_df.groupby("Category")["Amount"].sum().reset_index()
+fig_pie = px.pie(cat_totals, names="Category", values="Amount")
+st.plotly_chart(fig_pie, use_container_width=True)
 
-# --- 2. 3-Month Spending Breakdown ---
-st.subheader("📊 Spending Breakdown (Last 3 Months)")
-cat_totals = df.groupby("Category")["Amount"].sum().reset_index()
-fig_total = px.pie(cat_totals, names="Category", values="Amount", title="Spending by Category")
-st.plotly_chart(fig_total, use_container_width=True)
+# Section 3: Last Week Tracker (Line)
+st.subheader("📈 Daily Spending – Last 7 Days")
+last_week_sum = last_week.groupby(last_week["Date"].dt.date)["Amount"].sum().reset_index()
+fig_line = px.line(last_week_sum, x="Date", y="Amount", markers=True)
+st.plotly_chart(fig_line, use_container_width=True)
 
-# --- 3. Module Recommendations (Compact) ---
-st.subheader("📘 Recommended Modules")
+# Section 4: Month-over-Month Comparison
+st.subheader("📉 Monthly Comparison – Spending Change")
+df["Month"] = df["Date"].dt.to_period("M")
+monthly_totals = df[df["Amount"] < 0].groupby("Month")["Amount"].sum().reset_index()
+monthly_totals["Month"] = monthly_totals["Month"].astype(str)
 
-modules_df["match_score"] = modules_df.apply(lambda row: score_module(row, user_goals, user_triggers), axis=1)
-top_modules = modules_df.sort_values(by="match_score", ascending=False).head(3)
+if len(monthly_totals) >= 2:
+    last = monthly_totals.iloc[-1]["Amount"]
+    prev = monthly_totals.iloc[-2]["Amount"]
+    change = (last - prev) / abs(prev) * 100 if prev != 0 else 0
+    col3, col4 = st.columns(2)
+    col3.metric("This Month", f"€{-last:.2f}")
+    col4.metric("Change from Last Month", f"{change:+.1f}%")
 
-if top_modules["match_score"].max() > 0:
-    for title in top_modules["title"]:
-        st.markdown(f"- {title}")
-else:
-    st.info("No relevant modules to recommend right now.")
+fig_month = px.bar(monthly_totals, x="Month", y="Amount", title="Total Monthly Spending")
+st.plotly_chart(fig_month, use_container_width=True)
+
+# Section 5: Investment Trend Line
+st.subheader("📈 Investment Activity Over Time")
+invest_df = df[df]()_
 
