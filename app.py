@@ -55,7 +55,13 @@ st.sidebar.write(", ".join(triggers) if triggers else "None")
 
 # Section 1: Spending Snapshot (7 days)
 st.subheader("💸 Spending Snapshot (Last 7 Days)")
-last_week = df[df["Date"] >= pd.Timestamp.now() - pd.Timedelta(days=7)]
+recent_spending = df[df["Amount"] < 0].sort_values("Date", ascending=False)
+if not recent_spending.empty:
+    latest_date = recent_spending["Date"].max()
+    last_week = df[(df["Date"] >= latest_date - pd.Timedelta(days=6)) & 
+                   (df["Date"] <= latest_date)]
+else:
+    last_week = pd.DataFrame()
 weekly_total = last_week["Amount"].sum()
 top_cats = last_week.groupby("Category")["Amount"].sum().sort_values().head(3)
 
