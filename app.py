@@ -65,7 +65,9 @@ col2.metric("Top Category", top_cats.idxmin() if not top_cats.empty else "N/A")
 
 # Section 2: Category Breakdown (last 3 months)
 st.subheader("📊 Spending by Category (3 Months)")
-spending_df = df[df["Amount"] < 0]
+exclude_categories = ["Salary", "Savings", "Investments"]
+spending_df = df[~df["Category"].isin(exclude_categories)]
+
 cat_totals = spending_df.groupby("Category")["Amount"].sum().reset_index()
 fig_pie = px.pie(cat_totals, names="Category", values="Amount")
 st.plotly_chart(fig_pie, use_container_width=True)
