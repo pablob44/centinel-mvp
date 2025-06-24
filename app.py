@@ -17,70 +17,58 @@ st.sidebar.markdown(f"**XP:** {xp_data['xp']}")
 st.sidebar.markdown(f"**Streak:** {xp_data['streak_days']} days")
 
 # --- Tabs ---
-tab1, tab2, tab3 = st.tabs(["Home", "Bank Analytics", "Learning Hub"])
+# Add this below your existing imports
+import numpy as np
 
-# --- Home Tab ---
-with tab1:
-    st.title("Welcome to Centinel")
-    st.markdown("Your all-in-one hub for financial progress, habits, and personal growth.")
+# Load additional data
+user_df = pd.read_csv("centinel_user_data.csv")
+modules_df = pd.read_csv("modules.csv")
 
-    # Key Stats Row
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Level", xp_data["level"])
-    col2.metric("XP", xp_data["xp"])
-    col3.metric("Streak", f"{xp_data['streak_days']} days")
+# Derive behavior triggers from spending
+def derive_behavior_triggers(transactions):
+    triggers = set()
+    if transactions[transactions["Category"] == "Dining Out"]["Amount"].sum() < -150:
+        triggers.add("high_spending")
+    if transactions[transactions["Category"] == "Savings"]["Amount"].sum() < 20:
+        triggers.add("low_savings")
+    if "Crypto Wallet" in transactions["Merchant"].values:
+        triggers.add("crypto_interest")
+    if len(transactions[transactions["Category"] == "Transport"]) > 5:
+        triggers.add("frequent_withdrawals")
+    if "Budgeting 101" not in modules_df["title"].values:
+        triggers.add("no_budgeting_history")
+    if "Index ETF" in transactions["Merchant"].values:
+        triggers.add("new_investment_activity")
+    return triggers
 
-    st.progress(min(xp_data["xp"] % 100 / 100, 1.0), text="Progress to next level")
+# --- Page 2: Analytics ---
+with st.expander("🔍 Analytics", expanded=True):
+    st.header("Financial Insights & Recommendations")
 
-    st.divider()
-
-    # Weekly Financial Summary
-    st.subheader("Weekly Financial Summary")
-    total_income = df[df["Amount"] > 0]["Amount"].sum()
-    total_expenses = df[df["Amount"] < 0]["Amount"].sum()
-    total_savings_tx = df[df["Category"] == "Savings"]["Amount"].sum()
-    net_savings = total_income + total_expenses  # expenses are negative
-
-    col4, col5, col6 = st.columns(3)
-    col4.metric("Total Income", f"€{total_income:.2f}")
-    col5.metric("Total Expenses", f"€{abs(total_expenses):.2f}")
-    col6.metric("Net Savings (Calc)", f"€{net_savings:.2f}")
-
-    st.metric("Savings Transfers (Tagged)", f"€{total_savings_tx:.2f}")
-
-    fig = px.pie(df, values="Amount", names="Category", title="Spending by Category")
+    # Spending Breakdown
+    cat_totals = df.groupby("Category")["Amount"].sum().reset_index()
+    fig = px.pie(cat_totals, names="Category", values="Amount", title="Spending Breakdown (Past 3 Months)")
     st.plotly_chart(fig)
 
-    st.divider()
+    # User info
+    user_goals = user_df.iloc[0]["goal_tags"].split(";")
+    st.markdown("### Your Goals:")
+    st.write(", ".join(user_goals))
 
-    # Quick Access
-    st.subheader("Quick Access")
-    col6, col7 = st.columns(2)
-    with col6:
-        st.button("Claim Daily XP")
-        st.button("View Weekly Report")
-    with col7:
-        st.button("Connect Bank Account")
-        st.button("Start New Module")
+    # Derive triggers from transactions
+    triggers = derive_behavior_triggers(df)
+    st.markdown("### Behavioral Triggers Detected:")
+    st.write(", ".join(triggers) if triggers else "None")
 
-# --- Bank Analytics Tab ---
-with tab2:
-    st.title("Spending Breakdown")
-    st.dataframe(df)
+    # Recommend Modules
+    def score_module(row):
+        goal_match = len(set(row["goal_tags"].split(";")) & set(user_goals))
+        trigger_match = len(set(row["behavior_triggers"].split(";")) & triggers)
+        return goal_match + trigger_match
 
-    fig = px.pie(df, values="Amount", names="Category", title="Spending by Category")
-    st.plotly_chart(fig)
+    modules_df["match_score"] = modules_df.apply(score_module, axis=1)
+    top_recommendations = modules_df.sort_values(by="match_score", ascending=False).head(5)
 
-    total_spent = df[df["Amount"] < 0]["Amount"].sum()
-    total_saved = df[df["Amount"] > 0]["Amount"].sum()
-    st.metric("Total Spent", f"€{abs(total_spent):.2f}")
-    st.metric("Total Saved", f"€{total_saved:.2f}")
-
-# --- Learning Hub Tab ---
-with tab3:
-    st.title("Gamified Learning Hub")
-    topics = ["Budgeting Basics", "How Credit Works", "Crypto 101", "Smart Saving Tips"]
-    cols = st.columns(2)
-    for i, topic in enumerate(topics):
-        with cols[i % 2]:
-            st.button(topic)
+    st.markdown("### Recommended Modules")
+    for _, row in top_recommendations.iterrows():
+        st.markdown(f"**{row['title']}**  \n*Topic:* {row['topic_area']}  \n*XP:* {row['xp_value']}  \n*Duration:* {row['duration_minutes']} min  \n---")
