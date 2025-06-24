@@ -26,7 +26,7 @@ def derive_behavior_triggers(transactions):
         triggers.add("new_investment_activity")
     return triggers
 
-# Module match scoring
+# Module scoring
 def score_module(row, user_goals, user_triggers):
     module_goals = row["goal_tags"].split(";")
     module_triggers = row["behavior_triggers"].split(";")
@@ -34,16 +34,16 @@ def score_module(row, user_goals, user_triggers):
     trigger_match = len(set(module_triggers) & set(user_triggers))
     return goal_match + trigger_match
 
-# User & triggers
+# Load user
 user = user_df.iloc[0]
 user_goals = user["goal_tags"].split(";")
 triggers = derive_behavior_triggers(df)
 
-# Layout
+# Streamlit layout
 st.set_page_config(page_title="Centinel - Analytics", layout="wide")
 st.title("📊 Centinel Analytics Dashboard")
 
-# Sidebar (developer reference)
+# Sidebar
 st.sidebar.title("Centinel MVP")
 st.sidebar.subheader(f"Welcome back, {user['name']}")
 st.sidebar.markdown(f"**Level:** {user['level'].capitalize()}")
@@ -53,72 +53,66 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 🧠 Behavior Triggers (Dev Only)")
 st.sidebar.write(", ".join(triggers) if triggers else "None")
 
-# Section 1: Spending Snapshot (7 days)
-st.subheader("💸 Spending Snapshot (Last 7 Days)")
+# Fallback to recent week with data
 recent_spending = df[df["Amount"] < 0].sort_values("Date", ascending=False)
 if not recent_spending.empty:
     latest_date = recent_spending["Date"].max()
-    last_week = df[(df["Date"] >= latest_date - pd.Timedelta(days=6)) & 
+    last_week = df[(df["Date"] >= latest_date - timedelta(days=6)) & 
                    (df["Date"] <= latest_date)]
 else:
     last_week = pd.DataFrame()
-weekly_total = last_week["Amount"].sum()
-top_cats = last_week.groupby("Category")["Amount"].sum().sort_values().head(3)
+
+weekly_total = last_week["Amount"].sum() if not last_week.empty else 0
+top_cats = last_week.groupby("Category")["Amount"].sum().sort_values().head(3) if not last_week.empty else pd.Series()
 
 col1, col2 = st.columns(2)
-col1.metric("Total Spent", f"€{-weekly_total:.2f}")
+col1.metric("Total Spent", f"€{abs(weekly_total):.2f}")
 col2.metric("Top Category", top_cats.idxmin() if not top_cats.empty else "N/A")
 
-# Section 2: Category Breakdown (last 3 months)
+# Spending by Category (Pie)
 st.subheader("📊 Spending by Category (3 Months)")
 exclude_categories = ["Salary", "Savings", "Investments"]
 spending_df = df[~df["Category"].isin(exclude_categories)]
-
 cat_totals = spending_df.groupby("Category")["Amount"].sum().reset_index()
-fig_pie = px.pie(cat_totals, names="Category", values="Amount")
-st.plotly_chart(fig_pie, use_container_width=True)
+if not cat_totals.empty:
+    fig_pie = px.pie(cat_totals, names="Category", values="Amount")
+    st.plotly_chart(fig_pie, use_container_width=True)
+else:
+    st.info("No spending data available for category breakdown.")
 
-# Section 3: Last Week Tracker (Line)
+# Daily Spending (Line)
 st.subheader("📈 Daily Spending – Last 7 Days")
-last_week_sum = last_week.groupby(last_week["Date"].dt.date)["Amount"].sum().reset_index()
-fig_line = px.line(last_week_sum, x="Date", y="Amount", markers=True)
-st.plotly_chart(fig_line, use_container_width=True)
+exclude = ["Salary", "Savings", "Investments"]
+spending_days = last_week[~last_week["Category"].isin(exclude)]
+spending_days = spending_days[spending_days["Amount"] < 0]
+daily_spend = spending_days.groupby(spending_days["Date"].dt.date)["Amount"].sum().abs().reset_index()
+if not daily_spend.empty:
+    fig_line = px.line(daily_spend, x="Date", y="Amount", markers=True, title="Daily Spending (€)")
+    st.plotly_chart(fig_line, use_container_width=True)
+else:
+    st.info("No daily spending to display.")
 
-# Section 4: Month-over-Month Comparison
-st.subheader("📉 Monthly Comparison – Spending Change")
-df["Month"] = df["Date"].dt.to_period("M")
-monthly_totals = df[df["Amount"] < 0].groupby("Month")["Amount"].sum().reset_index()
-monthly_totals["Month"] = monthly_totals["Month"].astype(str)
-
-if len(monthly_totals) >= 2:
-    last = monthly_totals.iloc[-1]["Amount"]
-    prev = monthly_totals.iloc[-2]["Amount"]
-    change = (last - prev) / abs(prev) * 100 if prev != 0 else 0
-    col3, col4 = st.columns(2)
-    col3.metric("This Month", f"€{-last:.2f}")
-    col4.metric("Change from Last Month", f"{change:+.1f}%")
-
-fig_month = px.bar(monthly_totals, x="Month", y="Amount", title="Total Monthly Spending")
-st.plotly_chart(fig_month, use_container_width=True)
-
-# Section 5: Investment Trend Line
-st.subheader("📈 Investment Activity Over Time")
-invest_df = df[df["Category"] == "Investments"]
-invest_trend = invest_df.groupby(invest_df["Date"].dt.date)["Amount"].sum().reset_index()
-fig_inv = px.line(invest_trend, x="Date", y="Amount", title="Daily Investment Amounts", markers=True)
-st.plotly_chart(fig_inv, use_container_width=True)
-
-# Section 6: Ratio Tracker (Spend vs Save vs Invest)
-st.subheader("📊 Spending vs Saving vs Investing Ratios")
+# Spend vs Save vs Invest Ratios
+st.subheader("📊 Financial Ratios – Spend vs Save vs Invest")
 df["Day"] = df["Date"].dt.date
 pivot = df[df["Category"].isin(["Savings", "Investments"]) | (df["Amount"] < 0)]
 pivot["Type"] = pivot["Category"].apply(lambda c: "Spend" if c not in ["Savings", "Investments"] else c)
-ratios = pivot.groupby(["Day", "Type"])["Amount"].sum().reset_index()
+ratios = pivot.groupby(["Day", "Type"])["Amount"].sum().abs().reset_index()
 ratios = ratios.pivot(index="Day", columns="Type", values="Amount").fillna(0).sort_index()
-fig_ratio = px.area(ratios, title="Daily Financial Flow", labels={"value": "€"}, markers=True)
-st.plotly_chart(fig_ratio, use_container_width=True)
+if not ratios.empty:
+    fig_ratio = px.area(ratios, title="Daily Financial Flow (Absolute €)", labels={"value": "€"})
+    st.plotly_chart(fig_ratio, use_container_width=True)
+    st.markdown("🔍 **Quick Tips**")
+    if "Spend" in ratios.columns and ratios["Spend"].mean() > max(ratios.get("Savings", 0).mean(), ratios.get("Investments", 0).mean()):
+        st.markdown("- You're spending more than you're saving or investing. Try limiting non-essential categories for a week.")
+    if "Savings" in ratios.columns and ratios["Savings"].mean() < 20:
+        st.markdown("- Boost your savings — even small, regular transfers add up over time.")
+    if "Investments" in ratios.columns and ratios["Investments"].mean() > 0:
+        st.markdown("- Great! You're actively investing. Consider reviewing your diversification strategy.")
+else:
+    st.info("Not enough data to show spending ratios.")
 
-# Final Section: Recommended Modules
+# Recommended Modules
 st.subheader("📘 Recommended Modules")
 modules_df["match_score"] = modules_df.apply(lambda row: score_module(row, user_goals, triggers), axis=1)
 top_modules = modules_df.sort_values(by="match_score", ascending=False).head(3)
@@ -127,4 +121,5 @@ if top_modules["match_score"].max() > 0:
         st.markdown(f"- {title}")
 else:
     st.info("No relevant modules to recommend right now.")
+
 
