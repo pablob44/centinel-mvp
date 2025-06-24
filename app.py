@@ -17,14 +17,16 @@ st.sidebar.markdown(f"**XP:** {xp_data['xp']}")
 st.sidebar.markdown(f"**Streak:** {xp_data['streak_days']} days")
 
 # --- Tabs ---
-# Add this below your existing imports
+import pandas as pd
+import plotly.express as px
 import numpy as np
 
-# Load additional data
+# Load data
+df = pd.read_csv("fake_transactions.csv")
 user_df = pd.read_csv("centinel_user_data.csv")
 modules_df = pd.read_csv("modules.csv")
 
-# Derive behavior triggers from spending
+# --- Behavior trigger function ---
 def derive_behavior_triggers(transactions):
     triggers = set()
     if transactions[transactions["Category"] == "Dining Out"]["Amount"].sum() < -150:
@@ -41,34 +43,53 @@ def derive_behavior_triggers(transactions):
         triggers.add("new_investment_activity")
     return triggers
 
-# --- Page 2: Analytics ---
-with st.expander("🔍 Analytics", expanded=True):
-    st.header("Financial Insights & Recommendations")
-
-    # Spending Breakdown
-    cat_totals = df.groupby("Category")["Amount"].sum().reset_index()
-    fig = px.pie(cat_totals, names="Category", values="Amount", title="Spending Breakdown (Past 3 Months)")
-    st.plotly_chart(fig)
-
-    # User info
-    user_goals = user_df.iloc[0]["goal_tags"].split(";")
-    st.markdown("### Your Goals:")
-    st.write(", ".join(user_goals))
-
-    # Derive triggers from transactions
+# --- Module scoring function ---
+def score_module(row):
+    goal_tags = user_df.iloc[0]["goal_tags"].split(";")
     triggers = derive_behavior_triggers(df)
-    st.markdown("### Behavioral Triggers Detected:")
-    st.write(", ".join(triggers) if triggers else "None")
+    goal_match = len(set(row["goal_tags"].split(";")) & set(goal_tags))
+    trigger_match = len(set(row["behavior_triggers"].split(";")) & triggers)
+    return goal_match + trigger_match
 
-    # Recommend Modules
-    def score_module(row):
-        goal_match = len(set(row["goal_tags"].split(";")) & set(user_goals))
-        trigger_match = len(set(row["behavior_triggers"].split(";")) & triggers)
-        return goal_match + trigger_match
+# --- PAGE 2: ANALYTICS ---
+st.title("📊 Spending Analytics")
 
-    modules_df["match_score"] = modules_df.apply(score_module, axis=1)
-    top_recommendations = modules_df.sort_values(by="match_score", ascending=False).head(5)
+# --- 1. Last 7 Days Overview ---
+st.subheader("Last 7 Days Overview")
 
-    st.markdown("### Recommended Modules")
-    for _, row in top_recommendations.iterrows():
-        st.markdown(f"**{row['title']}**  \n*Topic:* {row['topic_area']}  \n*XP:* {row['xp_value']}  \n*Duration:* {row['duration_minutes']} min  \n---")
+df["Date"] = pd.to_datetime(df["Date"])
+last_week = df[df["Date"] >= pd.Timestamp.now() - pd.Timedelta(days=7)]
+
+weekly_total = last_week["Amount"].sum()
+top_cats = last_week.groupby("Category")["Amount"].sum().sort_values().head(3)
+
+col1, col2 = st.columns(2)
+col1.metric("Total Spent", f"€{-weekly_total:.2f}")
+col2.metric("Top Category", top_cats.idxmin() if not top_cats.empty else "N/A")
+
+if not top_cats.empty:
+    fig_week = px.bar(top_cats.reset_index(), x="Category", y="Amount", title="Top Spending Categories (Last 7 Days)", color="Category")
+    st.plotly_chart(fig_week, use_container_width=True)
+
+# --- 2. Full Spending Breakdown (3 Months) ---
+st.subheader("Spending Breakdown (Last 3 Months)")
+cat_totals = df.groupby("Category")["Amount"].sum().reset_index()
+fig_total = px.pie(cat_totals, names="Category", values="Amount")
+st.plotly_chart(fig_total, use_container_width=True)
+
+# --- 3. DEV-ONLY: Behavior Triggers ---
+triggers = derive_behavior_triggers(df)
+st.sidebar.markdown("### 🧠 Behavior Triggers (Dev)")
+st.sidebar.write(", ".join(triggers) if triggers else "None")
+
+# --- 4. Recommended Modules ---
+st.subheader("📘 Recommended Modules")
+
+modules_df["match_score"] = modules_df.apply(score_module, axis=1)
+top_modules = modules_df.sort_values(by="match_score", ascending=False).head(3)
+
+if top_modules["match_score"].max() > 0:
+    for title in top_modules["title"]:
+        st.markdown(f"- {title}")
+else:
+    st.info("No relevant modules to recommend right now.")
