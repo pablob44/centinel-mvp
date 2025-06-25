@@ -6,183 +6,146 @@ from datetime import datetime, timedelta
 # Load data
 df = pd.read_csv("fake_transactions.csv")
 df["Date"] = pd.to_datetime(df["Date"])
-user_df = pd.read_csv("centinel_user_data.csv")
-modules_df = pd.read_csv("modules.csv")
+user = pd.read_csv("centinel_user_data.csv").iloc[0]
+modules = pd.read_csv("modules.csv")
 df_lists = pd.read_csv("centinel_goals_triggers_advice.csv")
 
-# Trigger-to-advice mapping (cleaned)
-trigger_to_advice = {
-    "high_spending": [
-        "Try limiting non-essential categories for a week.",
-        "High daily spending? Consider batching purchases weekly."
-    ],
-    "low_savings": [
-        "Boost your savings — even small, regular transfers add up over time.",
-        "Low savings detected — explore emergency fund strategies."
-    ],
-    "crypto_interest": [
-        "Crypto detected — great! Just be sure it fits your long-term goals."
-    ],
-    "frequent_withdrawals": [
-        "Frequent withdrawals may indicate poor planning — try using a budget envelope method."
-    ],
-    "no_budgeting_history": [
-        "No budgeting history — start simple with a 50/30/20 plan."
-    ],
-    "new_investment_activity": [
-        "You're actively investing — consider reviewing your diversification."
-    ],
-    "unstable_income": [
-        "Your income seems inconsistent. Consider building a buffer or using income smoothing techniques."
-    ],
-    "subscription_overlap": [
-        "You have multiple subscriptions at once. Consider cancelling one unused service this month."
-    ]
-}
+# Define weeks
+today = df["Date"].max()
+last_3_weeks = [(today - timedelta(days=i*7), today - timedelta(days=(i+1)*7)) for i in range(3)]
+month_ago_start = today - timedelta(days=60)
+month_ago_end = today - timedelta(days=30)
 
-# Behavioral trigger logic
-def derive_behavior_triggers(transactions):
+# --- Binary Trigger Logic ---
+def detect_triggers(data):
     triggers = set()
-
-    if transactions[transactions["Category"] == "Dining Out"]["Amount"].sum() < -150:
+    if data[data["Category"] == "Dining Out"]["Amount"].sum() < -150:
         triggers.add("high_spending")
-    if transactions[transactions["Category"] == "Savings"]["Amount"].sum() < 20:
+    if data[data["Category"] == "Savings"]["Amount"].sum() < 20:
         triggers.add("low_savings")
-    if "Crypto Wallet" in transactions["Merchant"].values:
+    if data["Merchant"].str.contains("Crypto Wallet", na=False).any():
         triggers.add("crypto_interest")
-    if len(transactions[transactions["Category"] == "Transport"]) > 5:
+    if data["Merchant"].str.contains("ATM|Venmo|Cash|PayPal", case=False, na=False).sum() >= 3:
         triggers.add("frequent_withdrawals")
-    if "Budgeting 101" not in modules_df["title"].values:
+    if "Budgeting 101" not in modules["title"].values:
         triggers.add("no_budgeting_history")
-    if "Index ETF" in transactions["Merchant"].values:
+    if "Index ETF" in data["Merchant"].values:
         triggers.add("new_investment_activity")
-
-    # New trigger 1: Unstable income
-    salary_months = transactions[transactions["Category"] == "Salary"]["Date"].dt.to_period("M").nunique()
+    salary_months = data[data["Category"] == "Salary"]["Date"].dt.to_period("M").nunique()
     if salary_months < 2:
         triggers.add("unstable_income")
-
-    # New trigger 2: Subscription overlap
-    subs = transactions[transactions["Category"] == "Subscriptions"].copy()
+    subs = data[data["Category"] == "Subscriptions"].copy()
     subs["Week"] = subs["Date"].dt.to_period("W")
     if subs.groupby("Week")["Merchant"].nunique().max() >= 2:
         triggers.add("subscription_overlap")
-
     return triggers
 
-# Module scoring
-def score_module(row, user_goals, user_triggers):
-    module_goals = row["goal_tags"].split(";")
-    module_triggers = row["behavior_triggers"].split(";")
-    goal_match = len(set(module_goals) & set(user_goals))
-    trigger_match = len(set(module_triggers) & set(user_triggers))
-    return goal_match + trigger_match
+# Weekly persistence map
+persistence = {}
+for week_start, week_end in last_3_weeks:
+    weekly_data = df[(df["Date"] >= week_end) & (df["Date"] < week_start)]
+    week_triggers = detect_triggers(weekly_data)
+    for trig in week_triggers:
+        persistence[trig] = persistence.get(trig, 0) + 1
 
-# Load user and triggers
-user = user_df.iloc[0]
-user_goals = user["goal_tags"].split(";")
-triggers = derive_behavior_triggers(df)
+# Advice trigger selection
+top_triggers = sorted(persistence, key=persistence.get, reverse=True)[:3]
 
-# Streamlit layout
-st.set_page_config(page_title="Centinel - Analytics", layout="wide")
-st.title("Centinel Analytics Dashboard")
+# Advice text
+trigger_to_advice = {
+    "high_spending": ["Try limiting non-essential categories for a week."],
+    "low_savings": ["Boost your savings — even small, regular transfers add up over time."],
+    "crypto_interest": ["Crypto detected — just make sure it fits your long-term plan."],
+    "frequent_withdrawals": ["Frequent withdrawals may signal poor planning. Try setting weekly limits."],
+    "no_budgeting_history": ["No budgeting history — start simple with a 50/30/20 method."],
+    "new_investment_activity": ["New investment detected — diversify gradually if you're just starting out."],
+    "unstable_income": ["Your income looks inconsistent. Try building a savings buffer."],
+    "subscription_overlap": ["Multiple subscriptions overlap — consider cancelling one unused service."]
+}
 
-# Sidebar
-st.sidebar.title("Centinel MVP")
-st.sidebar.subheader(f"Welcome back, {user['name']}")
+# Visual logic: new triggers vs last month
+current_week = df[(df["Date"] > today - timedelta(days=7))]
+past_month = df[(df["Date"] >= month_ago_start) & (df["Date"] < month_ago_end)]
+
+new_now = detect_triggers(current_week)
+old = detect_triggers(past_month)
+new_triggers = new_now - old
+
+# Severity proxy logic
+def trigger_severity(trigger, data):
+    if trigger == "high_spending":
+        return abs(data[data["Amount"] < 0]["Amount"].sum())
+    elif trigger == "low_savings":
+        return abs(data[data["Category"] == "Savings"]["Amount"].sum())
+    elif trigger == "frequent_withdrawals":
+        return data["Merchant"].str.contains("ATM|Cash|Venmo|PayPal", case=False, na=False).sum()
+    elif trigger == "subscription_overlap":
+        subs = data[data["Category"] == "Subscriptions"]
+        return subs["Amount"].sum() if not subs.empty else 0
+    elif trigger == "new_investment_activity":
+        return data[data["Category"] == "Investments"]["Amount"].sum()
+    return 0
+
+# Decide visual trigger
+candidate_triggers = list(new_triggers & {"high_spending", "low_savings", "frequent_withdrawals", "subscription_overlap", "new_investment_activity"})
+if candidate_triggers:
+    best_trigger = max(candidate_triggers, key=lambda t: trigger_severity(current_week, t))
+else:
+    fallback_triggers = [t for t in top_triggers if t in {"high_spending", "low_savings", "frequent_withdrawals", "subscription_overlap", "new_investment_activity"}]
+    best_trigger = fallback_triggers[0] if fallback_triggers else None
+
+# --- Module Recommendation ---
+goals = user["goal_tags"].split(";")
+def score_module(row):
+    m_goals = row["goal_tags"].split(";")
+    m_trigs = row["behavior_triggers"].split(";")
+    return len(set(m_goals) & set(goals)) + len(set(m_trigs) & set(top_triggers))
+
+modules["score"] = modules.apply(score_module, axis=1)
+top_modules = modules.sort_values("score", ascending=False).head(3)
+
+# --- Streamlit UI ---
+st.set_page_config(page_title="Centinel Analytics", layout="wide")
+st.title("Centinel Analytics")
+
+st.sidebar.header(f"Welcome, {user['name']}")
 st.sidebar.markdown(f"Level: {user['level'].capitalize()}")
-st.sidebar.markdown(f"XP: {user['xp_points']}")
-st.sidebar.markdown(f"Streak: {user['streak_days']} days")
+st.sidebar.markdown(f"XP: {user['xp_points']} | Streak: {user['streak_days']} days")
 st.sidebar.markdown("---")
-st.sidebar.markdown("Behavior Triggers (Dev Only)")
-st.sidebar.write(", ".join(triggers) if triggers else "None")
+st.sidebar.markdown("**Top Triggers (Past 3 Weeks)**")
+for t in top_triggers:
+    st.sidebar.markdown(f"- {t.replace('_',' ').title()} ({persistence[t]}/3 weeks)")
 
-# Weekly overview
-recent_spending = df[df["Amount"] < 0].sort_values("Date", ascending=False)
-latest_date = recent_spending["Date"].max() if not recent_spending.empty else pd.Timestamp.now()
-last_week = df[(df["Date"] >= latest_date - timedelta(days=6)) & 
-               (df["Date"] <= latest_date)]
+# Visual based on chosen trigger
+st.subheader(f"Behavior Over Time: {best_trigger.replace('_',' ').title()}" if best_trigger else "Behavior Over Time")
+if best_trigger:
+    plot_df = df.copy()
+    plot_df["Day"] = plot_df["Date"].dt.date
+    if best_trigger == "high_spending":
+        plot = plot_df[plot_df["Amount"] < 0].groupby("Day")["Amount"].sum().abs().reset_index()
+    elif best_trigger == "low_savings":
+        plot = plot_df[plot_df["Category"] == "Savings"].groupby("Day")["Amount"].sum().reset_index()
+    elif best_trigger == "frequent_withdrawals":
+        plot = plot_df[plot_df["Merchant"].str.contains("ATM|Cash|Venmo|PayPal", case=False, na=False)]
+        plot = plot.groupby("Day")["Amount"].count().reset_index(name="Amount")
+    elif best_trigger == "subscription_overlap":
+        plot = plot_df[plot_df["Category"] == "Subscriptions"].groupby("Day")["Amount"].sum().reset_index()
+    elif best_trigger == "new_investment_activity":
+        plot = plot_df[plot_df["Category"] == "Investments"].groupby("Day")["Amount"].sum().reset_index()
+    if not plot.empty:
+        fig = px.line(plot, x="Day", y="Amount", markers=True)
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Not enough data to visualize.")
 
-weekly_total = last_week["Amount"].sum() if not last_week.empty else 0
-top_cats = last_week.groupby("Category")["Amount"].sum().sort_values().head(3) if not last_week.empty else pd.Series()
-col1, col2 = st.columns(2)
-col1.metric("Total Spent", f"€{abs(weekly_total):.2f}")
-col2.metric("Top Category", top_cats.idxmin() if not top_cats.empty else "N/A")
+# Advice
+st.subheader("Advice")
+for t in top_triggers:
+    tips = trigger_to_advice.get(t, [])
+    if tips:
+        st.markdown(f"- {tips[0]}")
 
-# Spending Pie Chart
-st.subheader("Spending Breakdown (Pie Chart)")
-spend_pie = df[~df["Category"].isin(["Salary", "Savings", "Investments"])]
-cat_totals = spend_pie.groupby("Category")["Amount"].sum().abs().reset_index()
-if not cat_totals.empty:
-    fig_pie = px.pie(cat_totals, names="Category", values="Amount")
-    st.plotly_chart(fig_pie, use_container_width=True)
-else:
-    st.info("No spending data available.")
-
-# Daily spending line chart
-st.subheader("Daily Spending – Last 7 Days")
-exclude = ["Salary", "Savings", "Investments"]
-spending_days = last_week[~last_week["Category"].isin(exclude)]
-spending_days = spending_days[spending_days["Amount"] < 0]
-daily_spend = spending_days.groupby(spending_days["Date"].dt.date)["Amount"].sum().abs().reset_index()
-if not daily_spend.empty:
-    fig_line = px.line(daily_spend, x="Date", y="Amount", markers=True, title="Daily Spending")
-    st.plotly_chart(fig_line, use_container_width=True)
-else:
-    st.info("No daily spending to display.")
-
-# Spend vs Save vs Invest Ratios
-st.subheader("Spending vs Saving vs Investing Ratios")
-df["Day"] = df["Date"].dt.date
-pivot = df[df["Category"].isin(["Savings", "Investments"]) | (df["Amount"] < 0)]
-pivot["Type"] = pivot["Category"].apply(lambda c: "Spend" if c not in ["Savings", "Investments"] else c)
-ratios = pivot.groupby(["Day", "Type"])["Amount"].sum().abs().reset_index()
-ratios = ratios.pivot(index="Day", columns="Type", values="Amount").fillna(0).sort_index()
-if not ratios.empty:
-    fig_ratio = px.area(ratios, title="Daily Financial Flow")
-    st.plotly_chart(fig_ratio, use_container_width=True)
-
-    st.markdown("Insights & Tips")
-    shown = set()
-    for trig in triggers:
-        for tip in trigger_to_advice.get(trig, []):
-            if tip not in shown:
-                st.markdown("- " + tip)
-                shown.add(tip)
-else:
-    st.info("Not enough data to show financial flow.")
-
-# Trigger Frequency Comparison
-st.subheader("Behavioral Triggers: This Month vs 2 Months Ago")
-df["Month"] = df["Date"].dt.to_period("M")
-month_list = df["Month"].sort_values().unique()
-if len(month_list) >= 3:
-    month_now = month_list[-1]
-    month_past = month_list[-3]
-
-    current = derive_behavior_triggers(df[df["Month"] == month_now])
-    past = derive_behavior_triggers(df[df["Month"] == month_past])
-    combined = list(set(current | past))
-    counts = pd.DataFrame({
-        "Trigger": combined,
-        "Current Month": [1 if t in current else 0 for t in combined],
-        "Two Months Ago": [1 if t in past else 0 for t in combined]
-    }).set_index("Trigger").T
-
-    diffs = counts.loc["Current Month"] - counts.loc["Two Months Ago"]
-    top2 = diffs.abs().sort_values(ascending=False).head(2).index
-    fig_trig = px.bar(counts[top2].T.reset_index(), x="Trigger", y=["Current Month", "Two Months Ago"],
-                      barmode="group", title="Top Behavioral Trigger Changes")
-    st.plotly_chart(fig_trig, use_container_width=True)
-else:
-    st.info("Not enough data for behavioral trend comparison.")
-
-# Recommended Modules
+# Modules
 st.subheader("Recommended Modules")
-modules_df["match_score"] = modules_df.apply(lambda row: score_module(row, user_goals, triggers), axis=1)
-top_modules = modules_df.sort_values(by="match_score", ascending=False).head(3)
-if top_modules["match_score"].max() > 0:
-    for title in top_modules["title"]:
-        st.markdown(f"- {title}")
-else:
-    st.info("No relevant modules to recommend right now.")
+for _, row in top_modules.iterrows():
+    st.markdown(f"- {row['title']}")
