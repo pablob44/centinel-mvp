@@ -188,7 +188,18 @@ if page == "Analytics":
     for _, row in top_modules.iterrows():
         st.markdown(f"- {row['title']}")
 elif page == "Modules":
-    st.title("Your Learning Modules")
+        st.title("Your Learning Modules")
+
+    # --- Load & Prepare Data ---
+    modules_df["module_id"] = pd.to_numeric(modules_df["module_id"], errors="coerce")
+    modules_df = modules_df.dropna(subset=["module_id"])
+    modules_df["module_id"] = modules_df["module_id"].astype(int)
+
+    modules_df["learning_path"] = modules_df["learning_path"].fillna("")
+    modules_df["access_level"] = modules_df["access_level"].fillna("beginner")
+    modules_df["xp_value"] = modules_df["xp_value"].fillna(0)
+    modules_df["duration_minutes"] = modules_df["duration_minutes"].fillna(0)
+    modules_df["popularity_score"] = modules_df["popularity_score"].fillna(0)
 
     user_goals = user["goal_tags"].split(";")
     triggers = top_triggers
@@ -199,34 +210,35 @@ elif page == "Modules":
         return len(set(goals) & set(user_goals)) + len(set(trigs) & set(triggers))
 
     modules_df["score"] = modules_df.apply(score_module, axis=1)
-    modules_df["module_id"] = pd.to_numeric(modules_df["module_id"], errors="coerce")
-    modules_df = modules_df.dropna(subset=["module_id"])
-    modules_df["module_id"] = modules_df["module_id"].astype(int)
-    modules_df["difficulty"] = modules_df["difficulty"].astype(str)
 
-    current_path = modules_df.loc[modules_df["path"] != "external", "path"].iloc[0]
-    next_module = modules_df[modules_df["path"] == current_path].sort_values("module_id").head(1)
+    # --- Grouping ---
+    core_modules = modules_df[modules_df["learning_path"] != "external"]
+    current_path = core_modules["learning_path"].iloc[0] if not core_modules.empty else ""
+    next_module = core_modules[core_modules["learning_path"] == current_path].sort_values("module_id").head(1)
+
     featured = modules_df[modules_df["featured"] == True]
     recommended = modules_df[modules_df["score"] > 0].sort_values("score", ascending=False).head(5)
     remaining = modules_df[~modules_df.index.isin(
         next_module.index.union(featured.index).union(recommended.index)
-    )].sort_values("difficulty")
+    )].sort_values("access_level")
 
+    # --- Render Function ---
     def render_module(row):
         tag_color = "#34d399"  # aqua green
-        if row["path"] == "external":
+        if row["learning_path"] == "external":
             tag_color = "#6b21a8"  # dark purple
         elif row["featured"]:
             tag_color = "#fbbf24"  # gold
-        premium_lock = " 🔒" if row["premium"] else ""
-        st.markdown(f"""
+        premium_lock = " 🔒" if row["exclusive"] else ""
+        st.markdown(f'''
         <div style='border-left: 6px solid {tag_color}; padding: 1rem 1.5rem; margin-bottom: 1rem; background-color: #f9fafb; border-radius: 12px;'>
-            <h4 style='margin-bottom: 0.3rem;'>{row['title']}{premium_lock}</h4>
-            <p style='margin: 0.2rem 0;'><strong>Path:</strong> {row['path'].title()} | <strong>Level:</strong> {row['difficulty'].capitalize()}</p>
-            <p style='margin: 0.2rem 0;'><strong>XP:</strong> {row['xp']} | <strong>Time:</strong> {row['time']} min</p>
+            <h4 style='margin-bottom: 0.3rem;'>{row["title"]}{premium_lock}</h4>
+            <p style='margin: 0.2rem 0;'><strong>Path:</strong> {row["learning_path"].title()} | <strong>Level:</strong> {row["access_level"].capitalize()}</p>
+            <p style='margin: 0.2rem 0;'><strong>XP:</strong> {int(row["xp_value"])} | <strong>Time:</strong> {int(row["duration_minutes"])} min | <strong>Popularity:</strong> {row["popularity_score"]:.1f}</p>
         </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
 
+    # --- Sections ---
     st.subheader("Next Module in Your Path")
     for _, row in next_module.iterrows():
         render_module(row)
