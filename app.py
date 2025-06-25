@@ -188,7 +188,7 @@ if page == "Analytics":
     for _, row in top_modules.iterrows():
         st.markdown(f"- {row['title']}")
 elif page == "Modules":
-    st.title("Your Learning Modules")
+       st.title("Your Learning Modules")
 
     # --- Data Prep ---
     modules_df["learning_path"] = modules_df["learning_path"].fillna("external")
@@ -207,13 +207,20 @@ elif page == "Modules":
         next_module.index.union(featured.index).union(recommended.index)
     )].sort_values("access_level")
 
-    # --- Render Logic ---
+    # --- Color by learning_path (or exclusive)
+    path_colors = {
+        "Budgeting Basics": "#6ee7b7",  # light mint green
+        "Financial Resilience": "#34d399",  # aqua
+        "Investing Starters": "#059669",  # emerald
+        "external": "#6b21a8",  # dark purple
+    }
+
     def render_module(row):
-        tag_color = "#34d399"  # aqua green
-        if row["learning_path"] == "external":
-            tag_color = "#6b21a8"  # dark purple
-        elif row["featured"]:
-            tag_color = "#fbbf24"  # gold
+        # Color logic by path
+        tag_color = path_colors.get(row["learning_path"], "#34d399")  # default aqua
+        if row["exclusive"] == "premium":
+            tag_color = "#fbbf24"  # gold override for premium
+
         premium_lock = " 🔒" if row["exclusive"] == "premium" else ""
 
         return f"""
