@@ -263,7 +263,7 @@ elif page == "Shop":
 
     # --- Unlock Module Key ---
     st.markdown("""
-    <div style='border: 2px solid #4ade80; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background-color: #f0fdf4;'>
+    <div style='border: 2px solid #4ade80; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background-color: #f0fdf4;color: #111827;'>
         <h4>🔑 Unlock Module Key</h4>
         <p>Use this key to unlock any premium or token-only module.</p>
         <p><strong>Price:</strong> 10 tokens</p>
@@ -273,7 +273,7 @@ elif page == "Shop":
 
     # --- Avatar Customisation (Not Available) ---
     st.markdown("""
-    <div style='border: 2px solid #a855f7; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background-color: #f3e8ff;'>
+    <div style='border: 2px solid #a855f7; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background-color: #f3e8ff;color: #111827;'>
         <h4>🧑‍🎨 Avatar Customisation</h4>
         <p>Personalise your profile with visual upgrades.</p>
         <p><strong>Coming Soon</strong></p>
