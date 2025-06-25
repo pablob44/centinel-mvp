@@ -199,6 +199,8 @@ elif page == "Modules":
         return len(set(goals) & set(user_goals)) + len(set(trigs) & set(triggers))
 
     modules_df["score"] = modules_df.apply(score_module, axis=1)
+    modules_df["module_id"] = pd.to_numeric(modules_df["module_id"], errors="coerce")
+    modules_df = modules_df.dropna(subset=["module_id"])
     modules_df["module_id"] = modules_df["module_id"].astype(int)
     modules_df["difficulty"] = modules_df["difficulty"].astype(str)
 
