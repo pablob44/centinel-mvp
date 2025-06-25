@@ -2,6 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
+PAGES = {
+    "Overview": "overview",
+    "Analytics": "analytics",
+    "Modules": "modules",
+    "Profile": "profile"
+}
+page = st.sidebar.selectbox("Go to", list(PAGES.keys()))
 
 # --- Load Data ---
 df = pd.read_csv("fake_transactions.csv")
