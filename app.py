@@ -188,30 +188,15 @@ if page == "Analytics":
     for _, row in top_modules.iterrows():
         st.markdown(f"- {row['title']}")
 elif page == "Modules":
-        st.title("Your Learning Modules")
+    st.title("Your Learning Modules")
 
-    # --- Load & Prepare Data ---
-    modules_df["module_id"] = pd.to_numeric(modules_df["module_id"], errors="coerce")
-    modules_df = modules_df.dropna(subset=["module_id"])
-    modules_df["module_id"] = modules_df["module_id"].astype(int)
+    # --- Data Prep ---
+    modules_df["learning_path"] = modules_df["learning_path"].fillna("external")
+    modules_df["score"] = modules_df.apply(
+        lambda row: len(set(row["goal_tags"].split(";")) & set(user["goal_tags"].split(";")))
+        + len(set(row["behavior_triggers"].split(";")) & set(top_triggers)), axis=1
+    )
 
-    modules_df["learning_path"] = modules_df["learning_path"].fillna("")
-    modules_df["access_level"] = modules_df["access_level"].fillna("beginner")
-    modules_df["xp_value"] = modules_df["xp_value"].fillna(0)
-    modules_df["duration_minutes"] = modules_df["duration_minutes"].fillna(0)
-    modules_df["popularity_score"] = modules_df["popularity_score"].fillna(0)
-
-    user_goals = user["goal_tags"].split(";")
-    triggers = top_triggers
-
-    def score_module(row):
-        goals = row["goal_tags"].split(";")
-        trigs = row["behavior_triggers"].split(";")
-        return len(set(goals) & set(user_goals)) + len(set(trigs) & set(triggers))
-
-    modules_df["score"] = modules_df.apply(score_module, axis=1)
-
-    # --- Grouping ---
     core_modules = modules_df[modules_df["learning_path"] != "external"]
     current_path = core_modules["learning_path"].iloc[0] if not core_modules.empty else ""
     next_module = core_modules[core_modules["learning_path"] == current_path].sort_values("module_id").head(1)
@@ -222,23 +207,26 @@ elif page == "Modules":
         next_module.index.union(featured.index).union(recommended.index)
     )].sort_values("access_level")
 
-    # --- Render Function ---
     def render_module(row):
-        tag_color = "#34d399"  # aqua green
+        # Color logic
+        tag_color = "#34d399"  # default: aqua for core
         if row["learning_path"] == "external":
             tag_color = "#6b21a8"  # dark purple
         elif row["featured"]:
             tag_color = "#fbbf24"  # gold
-        premium_lock = " 🔒" if row["exclusive"] else ""
-        st.markdown(f'''
+
+        # Lock logic
+        premium_lock = " 🔒" if row["exclusive"] == "premium" else ""
+
+        st.markdown(f"""
         <div style='border-left: 6px solid {tag_color}; padding: 1rem 1.5rem; margin-bottom: 1rem; background-color: #f9fafb; border-radius: 12px;'>
             <h4 style='margin-bottom: 0.3rem;'>{row["title"]}{premium_lock}</h4>
             <p style='margin: 0.2rem 0;'><strong>Path:</strong> {row["learning_path"].title()} | <strong>Level:</strong> {row["access_level"].capitalize()}</p>
-            <p style='margin: 0.2rem 0;'><strong>XP:</strong> {int(row["xp_value"])} | <strong>Time:</strong> {int(row["duration_minutes"])} min | <strong>Popularity:</strong> {row["popularity_score"]:.1f}</p>
+            <p style='margin: 0.2rem 0;'><strong>XP:</strong> {row["xp_value"]} | <strong>Time:</strong> {row["duration_minutes"]} min | <strong>Popularity:</strong> {row["popularity_score"]:.1f}</p>
         </div>
-        ''', unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    # --- Sections ---
+    # --- Render Sections ---
     st.subheader("Next Module in Your Path")
     for _, row in next_module.iterrows():
         render_module(row)
