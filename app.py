@@ -3,20 +3,21 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 
-# Load data
+# --- Load Data ---
 df = pd.read_csv("fake_transactions.csv")
 df["Date"] = pd.to_datetime(df["Date"])
-user = pd.read_csv("centinel_user_data.csv").iloc[0]
-modules = pd.read_csv("modules.csv")
+user_df = pd.read_csv("centinel_user_data.csv")
+user = user_df.iloc[0]
+modules_df = pd.read_csv("modules.csv")
 df_lists = pd.read_csv("centinel_goals_triggers_advice.csv")
 
-# Define timeframes
+# --- Timeframes ---
 today = df["Date"].max()
 last_3_weeks = [(today - timedelta(days=i*7), today - timedelta(days=(i+1)*7)) for i in range(3)]
 month_ago_start = today - timedelta(days=60)
 month_ago_end = today - timedelta(days=30)
 
-# Trigger detection (binary logic)
+# --- Trigger Detection ---
 def detect_triggers(data):
     triggers = set()
     if data[data["Category"] == "Dining Out"]["Amount"].sum() < -150:
@@ -27,7 +28,7 @@ def detect_triggers(data):
         triggers.add("crypto_interest")
     if data["Merchant"].str.contains("ATM|Venmo|Cash|PayPal", case=False, na=False).sum() >= 3:
         triggers.add("frequent_withdrawals")
-    if "Budgeting 101" not in modules["title"].values:
+    if "Budgeting 101" not in modules_df["title"].values:
         triggers.add("no_budgeting_history")
     if "Index ETF" in data["Merchant"].values:
         triggers.add("new_investment_activity")
@@ -40,18 +41,16 @@ def detect_triggers(data):
         triggers.add("subscription_overlap")
     return triggers
 
-# Weekly persistence: how many weeks each trigger was active
+# --- Persistence Calculation ---
 persistence = {}
 for week_start, week_end in last_3_weeks:
     weekly_data = df[(df["Date"] >= week_end) & (df["Date"] < week_start)]
     week_triggers = detect_triggers(weekly_data)
     for trig in week_triggers:
         persistence[trig] = persistence.get(trig, 0) + 1
-
-# Top 3 persistent triggers
 top_triggers = sorted(persistence, key=persistence.get, reverse=True)[:3]
 
-# Trigger-to-advice mapping
+# --- Advice Mapping ---
 trigger_to_advice = {
     "high_spending": ["Try limiting non-essential categories for a week."],
     "low_savings": ["Boost your savings — even small, regular transfers add up over time."],
@@ -63,7 +62,7 @@ trigger_to_advice = {
     "subscription_overlap": ["Multiple subscriptions overlap — consider cancelling one unused service."]
 }
 
-# Detect new triggers and decide visual
+# --- Visual Trigger Selection ---
 current_week = df[df["Date"] > today - timedelta(days=7)]
 past_month = df[(df["Date"] >= month_ago_start) & (df["Date"] < month_ago_end)]
 new_now = detect_triggers(current_week)
@@ -91,21 +90,20 @@ else:
     fallback_triggers = [t for t in top_triggers if t in {"high_spending", "low_savings", "frequent_withdrawals", "subscription_overlap", "new_investment_activity"}]
     best_trigger = fallback_triggers[0] if fallback_triggers else None
 
-# Recommend modules
-user_goals = user["goal_tags"].split(";")
+# --- Module Recommendation ---
+goals = user["goal_tags"].split(";")
 def score_module(row):
     m_goals = row["goal_tags"].split(";")
     m_trigs = row["behavior_triggers"].split(";")
-    return len(set(m_goals) & set(user_goals)) + len(set(m_trigs) & set(top_triggers))
+    return len(set(m_goals) & set(goals)) + len(set(m_trigs) & set(top_triggers))
 
-modules["score"] = modules.apply(score_module, axis=1)
-top_modules = modules.sort_values("score", ascending=False).head(3)
+modules_df["score"] = modules_df.apply(score_module, axis=1)
+top_modules = modules_df.sort_values("score", ascending=False).head(3)
 
 # --- Streamlit Layout ---
 st.set_page_config(page_title="Centinel Analytics", layout="wide")
 st.title("Centinel Analytics")
 
-# Sidebar user summary
 st.sidebar.header(f"Welcome, {user['name']}")
 st.sidebar.markdown(f"Level: {user['level'].capitalize()}")
 st.sidebar.markdown(f"XP: {user['xp_points']} | Streak: {user['streak_days']} days")
@@ -114,40 +112,71 @@ st.sidebar.markdown("**Top Triggers (Past 3 Weeks)**")
 for t in top_triggers:
     st.sidebar.markdown(f"- {t.replace('_',' ').title()} ({persistence[t]}/3 weeks)")
 
-# Visual display
+# --- Weekly Overview ---
+st.subheader("Spending Overview (Last 7 Days)")
+latest_date = df["Date"].max()
+last_week = df[df["Date"] >= latest_date - timedelta(days=6)]
+weekly_total = last_week["Amount"].sum()
+top_cats = last_week.groupby("Category")["Amount"].sum().sort_values().head(3)
+col1, col2 = st.columns(2)
+col1.metric("Total Spent", f"€{abs(weekly_total):.2f}")
+col2.metric("Top Category", top_cats.idxmin() if not top_cats.empty else "N/A")
+
+# --- Pie Chart ---
+st.subheader("Spending Breakdown")
+pie_df = df[df["Amount"] < 0]
+cat_totals = pie_df.groupby("Category")["Amount"].sum().abs().reset_index()
+fig_pie = px.pie(cat_totals, names="Category", values="Amount", color_discrete_sequence=px.colors.sequential.Aggrnyl)
+st.plotly_chart(fig_pie, use_container_width=True)
+
+# --- Daily Spending Line Chart ---
+st.subheader("Daily Spending (Past Week)")
+spending_df = df[(df["Date"] >= today - timedelta(days=6)) & (df["Amount"] < 0)]
+daily_spend = spending_df.groupby(spending_df["Date"].dt.date)["Amount"].sum().abs().reset_index()
+fig_line = px.line(daily_spend, x="Date", y="Amount", markers=True, color_discrete_sequence=["#7dd3fc"])
+st.plotly_chart(fig_line, use_container_width=True)
+
+# --- Spend/Save/Invest Ratios ---
+st.subheader("Spending vs Saving vs Investing")
+df["Day"] = df["Date"].dt.date
+pivot = df[df["Category"].isin(["Savings", "Investments"]) | (df["Amount"] < 0)].copy()
+pivot["Type"] = pivot["Category"].apply(lambda c: "Spend" if c not in ["Savings", "Investments"] else c)
+ratios = pivot.groupby(["Day", "Type"])["Amount"].sum().abs().reset_index()
+ratios = ratios.pivot(index="Day", columns="Type", values="Amount").fillna(0).sort_index()
+fig_area = px.area(ratios, color_discrete_sequence=["#7dd3fc", "#34d399"])
+st.plotly_chart(fig_area, use_container_width=True)
+
+# --- Behavioral Trigger Chart ---
 st.subheader(f"Behavior Over Time: {best_trigger.replace('_',' ').title()}" if best_trigger else "Behavior Over Time")
-if best_trigger:
-    df["Day"] = df["Date"].dt.date
-    if best_trigger == "high_spending":
-        plot_df = df[df["Amount"] < 0].groupby("Day")["Amount"].sum().abs().reset_index()
-    elif best_trigger == "low_savings":
-        plot_df = df[df["Category"] == "Savings"].groupby("Day")["Amount"].sum().reset_index()
-    elif best_trigger == "frequent_withdrawals":
-        plot_df = df[df["Merchant"].str.contains("ATM|Cash|Venmo|PayPal", case=False, na=False)]
-        plot_df = plot_df.groupby("Day")["Amount"].count().reset_index(name="Amount")
-    elif best_trigger == "subscription_overlap":
-        plot_df = df[df["Category"] == "Subscriptions"].groupby("Day")["Amount"].sum().reset_index()
-    elif best_trigger == "new_investment_activity":
-        plot_df = df[df["Category"] == "Investments"].groupby("Day")["Amount"].sum().reset_index()
-    else:
-        plot_df = pd.DataFrame()
+df["Day"] = df["Date"].dt.date
+if best_trigger == "high_spending":
+    plot = df[df["Amount"] < 0].groupby("Day")["Amount"].sum().abs().reset_index()
+elif best_trigger == "low_savings":
+    plot = df[df["Category"] == "Savings"].groupby("Day")["Amount"].sum().reset_index()
+elif best_trigger == "frequent_withdrawals":
+    plot = df[df["Merchant"].str.contains("ATM|Cash|Venmo|PayPal", case=False, na=False)].groupby("Day")["Amount"].count().reset_index(name="Amount")
+elif best_trigger == "subscription_overlap":
+    plot = df[df["Category"] == "Subscriptions"].groupby("Day")["Amount"].sum().reset_index()
+elif best_trigger == "new_investment_activity":
+    plot = df[df["Category"] == "Investments"].groupby("Day")["Amount"].sum().reset_index()
+else:
+    plot = pd.DataFrame()
 
-    if not plot_df.empty:
-        fig = px.line(plot_df, x="Day", y="Amount", markers=True,
-                      color_discrete_sequence=["#7dd3fc", "#34d399"])  # light blue / green
-        fig.update_layout(yaxis_title="", xaxis_title="", showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Not enough data to visualize this behavior.")
+if not plot.empty:
+    fig = px.line(plot, x="Day", y="Amount", markers=True, color_discrete_sequence=["#7dd3fc"])
+    fig.update_layout(yaxis_title="", xaxis_title="", showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("Not enough data to visualize.")
 
-# Advice
+# --- Advice ---
 st.subheader("Advice")
 for t in top_triggers:
     tips = trigger_to_advice.get(t, [])
     if tips:
         st.markdown(f"- {tips[0]}")
 
-# Recommended modules
+# --- Modules ---
 st.subheader("Recommended Modules")
 for _, row in top_modules.iterrows():
     st.markdown(f"- {row['title']}")
