@@ -208,23 +208,36 @@ elif page == "Modules":
     )].sort_values("access_level")
 
     def render_module(row):
-        # Color logic
-        tag_color = "#34d399"  # default: aqua for core
-        if row["learning_path"] == "external":
-            tag_color = "#6b21a8"  # dark purple
-        elif row["featured"]:
-            tag_color = "#fbbf24"  # gold
+    tag_color = "#34d399"
+    if row["learning_path"] == "external":
+        tag_color = "#6b21a8"
+    elif row["featured"]:
+        tag_color = "#fbbf24"
+    premium_lock = " 🔒" if row["exclusive"] == "premium" else ""
+    
+    return f"""
+    <div style='border-left: 6px solid {tag_color}; padding: 1rem 1rem 1rem 1.5rem; background-color: #f9fafb; border-radius: 12px; margin: 0.5rem; color: #111827;'>
+        <h4 style='margin-bottom: 0.5rem;'>{row["title"]}{premium_lock}</h4>
+        <p style='margin: 0.2rem 0;'><strong>Path:</strong> {row["learning_path"].title()} | <strong>Level:</strong> {row["access_level"].capitalize()}</p>
+        <p style='margin: 0.2rem 0;'><strong>XP:</strong> {row["xp_value"]} | <strong>Time:</strong> {row["duration_minutes"]} min | <strong>Popularity:</strong> {row["popularity_score"]:.1f}</p>
+    </div>
+    """
 
-        # Lock logic
-        premium_lock = " 🔒" if row["exclusive"] == "premium" else ""
+    def render_module_grid(df, section_title):
+        st.subheader(section_title)
+        rows = [df.iloc[i:i+3] for i in range(0, len(df), 3)]
+        for row_df in rows:
+            cols = st.columns(len(row_df))
+            for idx, (_, row) in enumerate(row_df.iterrows()):
+                with cols[idx]:
+                    st.markdown(render_module(row), unsafe_allow_html=True)
+    
+    # --- Display Sections ---
+    render_module_grid(next_module, "Next Module in Your Path")
+    render_module_grid(featured, "Featured Modules")
+    render_module_grid(recommended, "Recommended for You")
+    render_module_grid(remaining, "Explore More Modules")
 
-        st.markdown(f"""
-        <div style='border-left: 6px solid {tag_color}; padding: 1rem 1.5rem; margin-bottom: 1rem; background-color: #f9fafb; border-radius: 12px;'>
-            <h4 style='margin-bottom: 0.3rem;'>{row["title"]}{premium_lock}</h4>
-            <p style='margin: 0.2rem 0;'><strong>Path:</strong> {row["learning_path"].title()} | <strong>Level:</strong> {row["access_level"].capitalize()}</p>
-            <p style='margin: 0.2rem 0;'><strong>XP:</strong> {row["xp_value"]} | <strong>Time:</strong> {row["duration_minutes"]} min | <strong>Popularity:</strong> {row["popularity_score"]:.1f}</p>
-        </div>
-        """, unsafe_allow_html=True)
 
     # --- Render Sections ---
     st.subheader("Next Module in Your Path")
