@@ -188,7 +188,7 @@ if page == "Analytics":
     for _, row in top_modules.iterrows():
         st.markdown(f"- {row['title']}")
 elif page == "Modules":
-    st.title("Your Learning Modules")
+        st.title("Your Learning Modules")
 
     # --- Data Prep ---
     modules_df["learning_path"] = modules_df["learning_path"].fillna("external")
@@ -207,21 +207,22 @@ elif page == "Modules":
         next_module.index.union(featured.index).union(recommended.index)
     )].sort_values("access_level")
 
+    # --- Render Logic ---
     def render_module(row):
-        tag_color = "#34d399"
-    if row["learning_path"] == "external":
-        tag_color = "#6b21a8"
-    elif row["featured"]:
-        tag_color = "#fbbf24"
-    premium_lock = " 🔒" if row["exclusive"] == "premium" else ""
-    
-    return f"""
-    <div style='border-left: 6px solid {tag_color}; padding: 1rem 1rem 1rem 1.5rem; background-color: #f9fafb; border-radius: 12px; margin: 0.5rem; color: #111827;'>
-        <h4 style='margin-bottom: 0.5rem;'>{row["title"]}{premium_lock}</h4>
-        <p style='margin: 0.2rem 0;'><strong>Path:</strong> {row["learning_path"].title()} | <strong>Level:</strong> {row["access_level"].capitalize()}</p>
-        <p style='margin: 0.2rem 0;'><strong>XP:</strong> {row["xp_value"]} | <strong>Time:</strong> {row["duration_minutes"]} min | <strong>Popularity:</strong> {row["popularity_score"]:.1f}</p>
-    </div>
-    """
+        tag_color = "#34d399"  # aqua green
+        if row["learning_path"] == "external":
+            tag_color = "#6b21a8"  # dark purple
+        elif row["featured"]:
+            tag_color = "#fbbf24"  # gold
+        premium_lock = " 🔒" if row["exclusive"] == "premium" else ""
+
+        return f"""
+        <div style='border-left: 6px solid {tag_color}; padding: 1rem 1rem 1rem 1.5rem; background-color: #f9fafb; border-radius: 12px; margin: 0.5rem; color: #111827;'>
+            <h4 style='margin-bottom: 0.5rem;'>{row["title"]}{premium_lock}</h4>
+            <p style='margin: 0.2rem 0;'><strong>Path:</strong> {row["learning_path"].title()} | <strong>Level:</strong> {row["access_level"].capitalize()}</p>
+            <p style='margin: 0.2rem 0;'><strong>XP:</strong> {row["xp_value"]} | <strong>Time:</strong> {row["duration_minutes"]} min | <strong>Popularity:</strong> {row["popularity_score"]:.1f}</p>
+        </div>
+        """
 
     def render_module_grid(df, section_title):
         st.subheader(section_title)
@@ -231,27 +232,10 @@ elif page == "Modules":
             for idx, (_, row) in enumerate(row_df.iterrows()):
                 with cols[idx]:
                     st.markdown(render_module(row), unsafe_allow_html=True)
-    
+
     # --- Display Sections ---
     render_module_grid(next_module, "Next Module in Your Path")
     render_module_grid(featured, "Featured Modules")
     render_module_grid(recommended, "Recommended for You")
     render_module_grid(remaining, "Explore More Modules")
 
-
-    # --- Render Sections ---
-    st.subheader("Next Module in Your Path")
-    for _, row in next_module.iterrows():
-        render_module(row)
-
-    st.subheader("Featured Modules")
-    for _, row in featured.iterrows():
-        render_module(row)
-
-    st.subheader("Recommended for You")
-    for _, row in recommended.iterrows():
-        render_module(row)
-
-    st.subheader("Explore More Modules")
-    for _, row in remaining.iterrows():
-        render_module(row)
