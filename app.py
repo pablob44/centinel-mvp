@@ -208,7 +208,7 @@ elif page == "Modules":
     )].sort_values("access_level")
 
     def render_module(row):
-    tag_color = "#34d399"
+        tag_color = "#34d399"
     if row["learning_path"] == "external":
         tag_color = "#6b21a8"
     elif row["featured"]:
