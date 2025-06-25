@@ -8,8 +8,34 @@ df = pd.read_csv("fake_transactions.csv")
 df["Date"] = pd.to_datetime(df["Date"])
 user_df = pd.read_csv("centinel_user_data.csv")
 modules_df = pd.read_csv("modules.csv")
+df_lists = pd.read_csv("centinel_goals_triggers_advice.csv")
 
-# Behavior trigger logic
+# Trigger-to-advice mapping
+trigger_to_advice = {
+    "high_spending": [
+        "Try limiting non-essential categories for a week.",
+        "High daily spending? Consider batching purchases weekly."
+    ],
+    "low_savings": [
+        "Boost your savings — even small, regular transfers add up over time.",
+        "Low savings detected — explore emergency fund strategies.",
+        "Consider automating a portion of your income to savings."
+    ],
+    "crypto_interest": [
+        "Crypto detected — great! Just be sure it fits your long-term goals."
+    ],
+    "frequent_withdrawals": [
+        "Frequent withdrawals may indicate poor planning — try using a budget envelope method."
+    ],
+    "no_budgeting_history": [
+        "No budgeting history — start simple with a 50/30/20 plan."
+    ],
+    "new_investment_activity": [
+        "You're actively investing — consider reviewing your diversification."
+    ]
+}
+
+# Behavioral trigger detection
 def derive_behavior_triggers(transactions):
     triggers = set()
     if transactions[transactions["Category"] == "Dining Out"]["Amount"].sum() < -150:
@@ -41,16 +67,16 @@ triggers = derive_behavior_triggers(df)
 
 # Streamlit layout
 st.set_page_config(page_title="Centinel - Analytics", layout="wide")
-st.title("📊 Centinel Analytics Dashboard")
+st.title("Centinel Analytics Dashboard")
 
 # Sidebar
 st.sidebar.title("Centinel MVP")
 st.sidebar.subheader(f"Welcome back, {user['name']}")
-st.sidebar.markdown(f"**Level:** {user['level'].capitalize()}")
-st.sidebar.markdown(f"**XP:** {user['xp_points']}")
-st.sidebar.markdown(f"**Streak:** {user['streak_days']} days")
+st.sidebar.markdown(f"Level: {user['level'].capitalize()}")
+st.sidebar.markdown(f"XP: {user['xp_points']}")
+st.sidebar.markdown(f"Streak: {user['streak_days']} days")
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🧠 Behavior Triggers (Dev Only)")
+st.sidebar.markdown("Behavior Triggers (Dev Only)")
 st.sidebar.write(", ".join(triggers) if triggers else "None")
 
 # Fallback to recent week with data
@@ -69,51 +95,68 @@ col1, col2 = st.columns(2)
 col1.metric("Total Spent", f"€{abs(weekly_total):.2f}")
 col2.metric("Top Category", top_cats.idxmin() if not top_cats.empty else "N/A")
 
-# Spending by Category (Pie)
-st.subheader("📊 Spending by Category (3 Months)")
+# Bar chart for spending breakdown (3 months)
+st.subheader("Spending by Category (Bar Chart)")
 exclude_categories = ["Salary", "Savings", "Investments"]
 spending_df = df[~df["Category"].isin(exclude_categories)]
-cat_totals = spending_df.groupby("Category")["Amount"].sum().reset_index()
+cat_totals = spending_df.groupby("Category")["Amount"].sum().abs().reset_index()
 if not cat_totals.empty:
-    fig_pie = px.pie(cat_totals, names="Category", values="Amount")
-    st.plotly_chart(fig_pie, use_container_width=True)
+    fig_bar = px.bar(cat_totals.sort_values("Amount", ascending=False),
+                     x="Category", y="Amount", title="Category Spending (Last 3 Months)")
+    st.plotly_chart(fig_bar, use_container_width=True)
 else:
     st.info("No spending data available for category breakdown.")
 
 # Daily Spending (Line)
-st.subheader("📈 Daily Spending – Last 7 Days")
+st.subheader("Daily Spending – Last 7 Days")
 exclude = ["Salary", "Savings", "Investments"]
 spending_days = last_week[~last_week["Category"].isin(exclude)]
 spending_days = spending_days[spending_days["Amount"] < 0]
 daily_spend = spending_days.groupby(spending_days["Date"].dt.date)["Amount"].sum().abs().reset_index()
 if not daily_spend.empty:
-    fig_line = px.line(daily_spend, x="Date", y="Amount", markers=True, title="Daily Spending (€)")
+    fig_line = px.line(daily_spend, x="Date", y="Amount", markers=True, title="Daily Spending")
     st.plotly_chart(fig_line, use_container_width=True)
 else:
     st.info("No daily spending to display.")
 
 # Spend vs Save vs Invest Ratios
-st.subheader("📊 Financial Ratios – Spend vs Save vs Invest")
+st.subheader("Spending vs Saving vs Investing Ratios")
 df["Day"] = df["Date"].dt.date
 pivot = df[df["Category"].isin(["Savings", "Investments"]) | (df["Amount"] < 0)]
 pivot["Type"] = pivot["Category"].apply(lambda c: "Spend" if c not in ["Savings", "Investments"] else c)
 ratios = pivot.groupby(["Day", "Type"])["Amount"].sum().abs().reset_index()
 ratios = ratios.pivot(index="Day", columns="Type", values="Amount").fillna(0).sort_index()
 if not ratios.empty:
-    fig_ratio = px.area(ratios, title="Daily Financial Flow (Absolute €)", labels={"value": "€"})
+    fig_ratio = px.area(ratios, title="Daily Financial Flow")
     st.plotly_chart(fig_ratio, use_container_width=True)
-    st.markdown("🔍 **Quick Tips**")
-    if "Spend" in ratios.columns and ratios["Spend"].mean() > max(ratios.get("Savings", 0).mean(), ratios.get("Investments", 0).mean()):
-        st.markdown("- You're spending more than you're saving or investing. Try limiting non-essential categories for a week.")
-    if "Savings" in ratios.columns and ratios["Savings"].mean() < 20:
-        st.markdown("- Boost your savings — even small, regular transfers add up over time.")
-    if "Investments" in ratios.columns and ratios["Investments"].mean() > 0:
-        st.markdown("- Great! You're actively investing. Consider reviewing your diversification strategy.")
+
+    # Simple advice section
+    st.markdown("Insights & Tips")
+    shown = set()
+    for trig in triggers:
+        for tip in trigger_to_advice.get(trig, []):
+            if tip not in shown:
+                st.markdown("- " + tip)
+                shown.add(tip)
 else:
-    st.info("Not enough data to show spending ratios.")
+    st.info("Not enough data to show financial flow.")
+
+# Compare behavior change over months
+st.subheader("Behavior Trend: This Month vs 2 Months Ago")
+df["Month"] = df["Date"].dt.to_period("M")
+filtered = df[df["Amount"] < 0]
+month_summary = filtered.groupby(["Month", "Category"])["Amount"].sum().reset_index()
+if month_summary["Month"].nunique() >= 3:
+    last_two = month_summary["Month"].unique()[-3::2]  # current and 2 months ago
+    compare = month_summary[month_summary["Month"].isin(last_two)]
+    fig_compare = px.bar(compare, x="Category", y="Amount", color="Month",
+                         barmode="group", title="Spending by Category Comparison")
+    st.plotly_chart(fig_compare, use_container_width=True)
+else:
+    st.info("Not enough data to compare category behavior over time.")
 
 # Recommended Modules
-st.subheader("📘 Recommended Modules")
+st.subheader("Recommended Modules")
 modules_df["match_score"] = modules_df.apply(lambda row: score_module(row, user_goals, triggers), axis=1)
 top_modules = modules_df.sort_values(by="match_score", ascending=False).head(3)
 if top_modules["match_score"].max() > 0:
@@ -121,5 +164,3 @@ if top_modules["match_score"].max() > 0:
         st.markdown(f"- {title}")
 else:
     st.info("No relevant modules to recommend right now.")
-
-
