@@ -10,7 +10,7 @@ user_df = pd.read_csv("centinel_user_data.csv")
 modules_df = pd.read_csv("modules.csv")
 df_lists = pd.read_csv("centinel_goals_triggers_advice.csv")
 
-# Trigger-to-advice mapping
+# Trigger-to-advice mapping (cleaned)
 trigger_to_advice = {
     "high_spending": [
         "Try limiting non-essential categories for a week.",
@@ -18,8 +18,7 @@ trigger_to_advice = {
     ],
     "low_savings": [
         "Boost your savings — even small, regular transfers add up over time.",
-        "Low savings detected — explore emergency fund strategies.",
-        "Consider automating a portion of your income to savings."
+        "Low savings detected — explore emergency fund strategies."
     ],
     "crypto_interest": [
         "Crypto detected — great! Just be sure it fits your long-term goals."
@@ -32,12 +31,19 @@ trigger_to_advice = {
     ],
     "new_investment_activity": [
         "You're actively investing — consider reviewing your diversification."
+    ],
+    "unstable_income": [
+        "Your income seems inconsistent. Consider building a buffer or using income smoothing techniques."
+    ],
+    "subscription_overlap": [
+        "You have multiple subscriptions at once. Consider cancelling one unused service this month."
     ]
 }
 
-# Behavioral trigger detection
+# Behavioral trigger logic
 def derive_behavior_triggers(transactions):
     triggers = set()
+
     if transactions[transactions["Category"] == "Dining Out"]["Amount"].sum() < -150:
         triggers.add("high_spending")
     if transactions[transactions["Category"] == "Savings"]["Amount"].sum() < 20:
@@ -50,6 +56,18 @@ def derive_behavior_triggers(transactions):
         triggers.add("no_budgeting_history")
     if "Index ETF" in transactions["Merchant"].values:
         triggers.add("new_investment_activity")
+
+    # New trigger 1: Unstable income
+    salary_months = transactions[transactions["Category"] == "Salary"]["Date"].dt.to_period("M").nunique()
+    if salary_months < 2:
+        triggers.add("unstable_income")
+
+    # New trigger 2: Subscription overlap
+    subs = transactions[transactions["Category"] == "Subscriptions"].copy()
+    subs["Week"] = subs["Date"].dt.to_period("W")
+    if subs.groupby("Week")["Merchant"].nunique().max() >= 2:
+        triggers.add("subscription_overlap")
+
     return triggers
 
 # Module scoring
@@ -60,7 +78,7 @@ def score_module(row, user_goals, user_triggers):
     trigger_match = len(set(module_triggers) & set(user_triggers))
     return goal_match + trigger_match
 
-# Load user
+# Load user and triggers
 user = user_df.iloc[0]
 user_goals = user["goal_tags"].split(";")
 triggers = derive_behavior_triggers(df)
@@ -79,35 +97,29 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("Behavior Triggers (Dev Only)")
 st.sidebar.write(", ".join(triggers) if triggers else "None")
 
-# Fallback to recent week with data
+# Weekly overview
 recent_spending = df[df["Amount"] < 0].sort_values("Date", ascending=False)
-if not recent_spending.empty:
-    latest_date = recent_spending["Date"].max()
-    last_week = df[(df["Date"] >= latest_date - timedelta(days=6)) & 
-                   (df["Date"] <= latest_date)]
-else:
-    last_week = pd.DataFrame()
+latest_date = recent_spending["Date"].max() if not recent_spending.empty else pd.Timestamp.now()
+last_week = df[(df["Date"] >= latest_date - timedelta(days=6)) & 
+               (df["Date"] <= latest_date)]
 
 weekly_total = last_week["Amount"].sum() if not last_week.empty else 0
 top_cats = last_week.groupby("Category")["Amount"].sum().sort_values().head(3) if not last_week.empty else pd.Series()
-
 col1, col2 = st.columns(2)
 col1.metric("Total Spent", f"€{abs(weekly_total):.2f}")
 col2.metric("Top Category", top_cats.idxmin() if not top_cats.empty else "N/A")
 
-# Bar chart for spending breakdown (3 months)
-st.subheader("Spending by Category (Bar Chart)")
-exclude_categories = ["Salary", "Savings", "Investments"]
-spending_df = df[~df["Category"].isin(exclude_categories)]
-cat_totals = spending_df.groupby("Category")["Amount"].sum().abs().reset_index()
+# Spending Pie Chart
+st.subheader("Spending Breakdown (Pie Chart)")
+spend_pie = df[~df["Category"].isin(["Salary", "Savings", "Investments"])]
+cat_totals = spend_pie.groupby("Category")["Amount"].sum().abs().reset_index()
 if not cat_totals.empty:
-    fig_bar = px.bar(cat_totals.sort_values("Amount", ascending=False),
-                     x="Category", y="Amount", title="Category Spending (Last 3 Months)")
-    st.plotly_chart(fig_bar, use_container_width=True)
+    fig_pie = px.pie(cat_totals, names="Category", values="Amount")
+    st.plotly_chart(fig_pie, use_container_width=True)
 else:
-    st.info("No spending data available for category breakdown.")
+    st.info("No spending data available.")
 
-# Daily Spending (Line)
+# Daily spending line chart
 st.subheader("Daily Spending – Last 7 Days")
 exclude = ["Salary", "Savings", "Investments"]
 spending_days = last_week[~last_week["Category"].isin(exclude)]
@@ -130,7 +142,6 @@ if not ratios.empty:
     fig_ratio = px.area(ratios, title="Daily Financial Flow")
     st.plotly_chart(fig_ratio, use_container_width=True)
 
-    # Simple advice section
     st.markdown("Insights & Tips")
     shown = set()
     for trig in triggers:
@@ -141,19 +152,30 @@ if not ratios.empty:
 else:
     st.info("Not enough data to show financial flow.")
 
-# Compare behavior change over months
-st.subheader("Behavior Trend: This Month vs 2 Months Ago")
+# Trigger Frequency Comparison
+st.subheader("Behavioral Triggers: This Month vs 2 Months Ago")
 df["Month"] = df["Date"].dt.to_period("M")
-filtered = df[df["Amount"] < 0]
-month_summary = filtered.groupby(["Month", "Category"])["Amount"].sum().reset_index()
-if month_summary["Month"].nunique() >= 3:
-    last_two = month_summary["Month"].unique()[-3::2]  # current and 2 months ago
-    compare = month_summary[month_summary["Month"].isin(last_two)]
-    fig_compare = px.bar(compare, x="Category", y="Amount", color="Month",
-                         barmode="group", title="Spending by Category Comparison")
-    st.plotly_chart(fig_compare, use_container_width=True)
+month_list = df["Month"].sort_values().unique()
+if len(month_list) >= 3:
+    month_now = month_list[-1]
+    month_past = month_list[-3]
+
+    current = derive_behavior_triggers(df[df["Month"] == month_now])
+    past = derive_behavior_triggers(df[df["Month"] == month_past])
+    combined = list(set(current | past))
+    counts = pd.DataFrame({
+        "Trigger": combined,
+        "Current Month": [1 if t in current else 0 for t in combined],
+        "Two Months Ago": [1 if t in past else 0 for t in combined]
+    }).set_index("Trigger").T
+
+    diffs = counts.loc["Current Month"] - counts.loc["Two Months Ago"]
+    top2 = diffs.abs().sort_values(ascending=False).head(2).index
+    fig_trig = px.bar(counts[top2].T.reset_index(), x="Trigger", y=["Current Month", "Two Months Ago"],
+                      barmode="group", title="Top Behavioral Trigger Changes")
+    st.plotly_chart(fig_trig, use_container_width=True)
 else:
-    st.info("Not enough data to compare category behavior over time.")
+    st.info("Not enough data for behavioral trend comparison.")
 
 # Recommended Modules
 st.subheader("Recommended Modules")
