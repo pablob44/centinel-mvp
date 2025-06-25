@@ -267,7 +267,7 @@ elif page == "Shop":
         <h4>🔑 Unlock Module Key</h4>
         <p>Use this key to unlock any premium or token-only module.</p>
         <p><strong>Price:</strong> 10 tokens</p>
-        <button disabled style='padding: 0.5rem 1rem; background-color: #22c55e; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Coming Soon</button>
+        <button disabled style='padding: 0.5rem 1rem; background-color: #22c55e; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Buy Now</button>
     </div>
     """, unsafe_allow_html=True)
 
