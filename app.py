@@ -6,6 +6,8 @@ PAGES = {
     "Overview": "overview",
     "Analytics": "analytics",
     "Modules": "modules",
+    "Shop": "shop",
+    "Friends": "friends",
     "Profile": "profile"
 }
 page = st.sidebar.selectbox("Go to", list(PAGES.keys()))
@@ -251,3 +253,50 @@ elif page == "Modules":
     render_module_grid(featured, "Featured Modules")
     render_module_grid(recommended, "Recommended for You")
     render_module_grid(remaining, "Explore More Modules")
+elif page == "Shop":
+        st.title("🛍️ Centinel Shop")
+
+    # --- Token Balance ---
+    token_balance = int(user["token_balance"]) if "token_balance" in user else 0
+    st.markdown(f"### 💰 Your Token Balance: **{token_balance}**")
+    st.markdown("---")
+
+    # --- Unlock Module Key ---
+    st.markdown("""
+    <div style='border: 2px solid #4ade80; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background-color: #f0fdf4;'>
+        <h4>🔑 Unlock Module Key</h4>
+        <p>Use this key to unlock any premium or token-only module.</p>
+        <p><strong>Price:</strong> 10 tokens</p>
+        <button disabled style='padding: 0.5rem 1rem; background-color: #22c55e; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Coming Soon</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- Avatar Customisation (Not Available) ---
+    st.markdown("""
+    <div style='border: 2px solid #a855f7; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background-color: #f3e8ff;'>
+        <h4>🧑‍🎨 Avatar Customisation</h4>
+        <p>Personalise your profile with visual upgrades.</p>
+        <p><strong>Coming Soon</strong></p>
+        <button disabled style='padding: 0.5rem 1rem; background-color: #9333ea; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Coming Soon</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- Token Bundles ---
+    st.subheader("🪙 Buy More Tokens")
+    bundles = [
+        {"tokens": 10, "price": 4.99},
+        {"tokens": 50, "price": 19.99},
+        {"tokens": 100, "price": 34.99}
+    ]
+
+    cols = st.columns(3)
+    for col, bundle in zip(cols, bundles):
+        with col:
+            st.markdown(f"""
+            <div style='border: 2px solid #38bdf8; border-radius: 12px; padding: 1rem; background-color: #f0f9ff; color: #0f172a;'>
+                <h4>🪙 {bundle["tokens"]} Tokens</h4>
+                <p style='margin: 0.2rem 0;'><strong>Price:</strong> €{bundle["price"]:.2f}</p>
+                <button disabled style='padding: 0.4rem 1rem; background-color: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Buy Now</button>
+            </div>
+            """, unsafe_allow_html=True)
+
