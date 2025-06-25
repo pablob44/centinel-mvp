@@ -188,7 +188,7 @@ if page == "Analytics":
     for _, row in top_modules.iterrows():
         st.markdown(f"- {row['title']}")
 elif page == "Modules":
-        st.title("Your Learning Modules")
+    st.title("Your Learning Modules")
 
     # --- Data Prep ---
     modules_df["learning_path"] = modules_df["learning_path"].fillna("external")
@@ -238,4 +238,3 @@ elif page == "Modules":
     render_module_grid(featured, "Featured Modules")
     render_module_grid(recommended, "Recommended for You")
     render_module_grid(remaining, "Explore More Modules")
-
