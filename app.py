@@ -188,7 +188,7 @@ if page == "Analytics":
     for _, row in top_modules.iterrows():
         st.markdown(f"- {row['title']}")
 elif page == "Modules":
-    st.title("Your Learning Modules")
+        st.title("Your Learning Modules")
 
     # --- Data Prep ---
     modules_df["learning_path"] = modules_df["learning_path"].fillna("external")
@@ -196,6 +196,11 @@ elif page == "Modules":
         lambda row: len(set(row["goal_tags"].split(";")) & set(user["goal_tags"].split(";")))
         + len(set(row["behavior_triggers"].split(";")) & set(top_triggers)), axis=1
     )
+
+    # --- Set access_level as ordered categorical for sorting
+    difficulty_order = ["beginner", "intermediate", "advanced"]
+    modules_df["access_level"] = modules_df["access_level"].str.lower().fillna("beginner")
+    modules_df["access_level"] = pd.Categorical(modules_df["access_level"], categories=difficulty_order, ordered=True)
 
     core_modules = modules_df[modules_df["learning_path"] != "external"]
     current_path = core_modules["learning_path"].iloc[0] if not core_modules.empty else ""
@@ -207,21 +212,22 @@ elif page == "Modules":
         next_module.index.union(featured.index).union(recommended.index)
     )].sort_values("access_level")
 
-    # --- Color by learning_path (or exclusive)
+    # --- Color map by path (green variations), override for premium and external
     path_colors = {
-        "Budgeting Basics": "#6ee7b7",  # light mint green
-        "Financial Resilience": "#34d399",  # aqua
-        "Investing Starters": "#059669",  # emerald
-        "external": "#6b21a8",  # dark purple
+        "Budgeting Basics": "#6ee7b7",
+        "Financial Resilience": "#34d399",
+        "Investing Starters": "#059669",
+        "external": "#6b21a8",
     }
 
     def render_module(row):
-        # Color logic by path
-        tag_color = path_colors.get(row["learning_path"], "#34d399")  # default aqua
-        if row["exclusive"] == "premium":
-            tag_color = "#fbbf24"  # gold override for premium
+        # Premium logic + override color
+        is_premium = row["exclusive"] == "premium_or_token"
+        tag_color = path_colors.get(row["learning_path"], "#34d399")
+        if is_premium:
+            tag_color = "#fbbf24"  # gold
 
-        premium_lock = " 🔒" if row["exclusive"] == "premium" else ""
+        premium_lock = " 🔒" if is_premium else ""
 
         return f"""
         <div style='border-left: 6px solid {tag_color}; padding: 1rem 1rem 1rem 1.5rem; background-color: #f9fafb; border-radius: 12px; margin: 0.5rem; color: #111827;'>
@@ -240,7 +246,7 @@ elif page == "Modules":
                 with cols[idx]:
                     st.markdown(render_module(row), unsafe_allow_html=True)
 
-    # --- Display Sections ---
+    # --- Display All Sections ---
     render_module_grid(next_module, "Next Module in Your Path")
     render_module_grid(featured, "Featured Modules")
     render_module_grid(recommended, "Recommended for You")
