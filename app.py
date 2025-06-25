@@ -254,7 +254,7 @@ elif page == "Modules":
     render_module_grid(recommended, "Recommended for You")
     render_module_grid(remaining, "Explore More Modules")
 elif page == "Shop":
-        st.title("🛍️ Centinel Shop")
+    st.title("🛍️ Centinel Shop")
 
     # --- Token Balance ---
     token_balance = int(user["token_balance"]) if "token_balance" in user else 0
@@ -299,4 +299,3 @@ elif page == "Shop":
                 <button disabled style='padding: 0.4rem 1rem; background-color: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Buy Now</button>
             </div>
             """, unsafe_allow_html=True)
-
