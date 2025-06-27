@@ -399,19 +399,24 @@ elif page == "Overview":
     }
 
     # --- Challenge Scoring ---
+    
     goals = set(user["goal_tags"].split(";"))
     achievements = set(user["achievements"].split(";"))
-
+    triggers = set(top_triggers)  # from previous logic in analytics
+    
     def challenge_score(row):
         score = 0
         if row["linked_goal"] in goals:
             score += 2
+        if row["linked_trigger"] in triggers:
+            score += 1
         if row["linked_achievement"] not in achievements and pd.notna(row["linked_achievement"]):
             score += 1
         return score
-
+    
     challenges_df["score"] = challenges_df.apply(challenge_score, axis=1)
     top_challenges = challenges_df.sort_values("score", ascending=False).head(2)
+
 
     # --- Next Module ---
     path_modules = modules_df[modules_df["learning_path"] == user["current_path"]]
