@@ -381,4 +381,79 @@ elif page == "Profile":
             for ach in achievements_df.itertuples():
                 if ach.id not in unlocked:
                     st.markdown(f" *{ach.description}*  `({ach.category})`")
+elif page == "Overview":
+    st.set_page_config(page_title="Centinel Overview", layout="wide")
+    st.title("Welcome back, " + user["name"])
+
+    # --- Load Challenges ---
+    challenges_df = pd.read_csv("challenges.csv")
+    community_challenge = {
+        'challenge_id': 'COMM002',
+        'challenge_text': 'Log into the app every day this week.',
+        'linked_goal': '',
+        'linked_trigger': '',
+        'linked_achievement': '',
+        'estimated_difficulty': 'hard',
+        'xp_reward': 80,
+        'token_reward': 3
+    }
+
+    # --- Challenge Scoring ---
+    goals = set(user["goal_tags"].split(";"))
+    achievements = set(user["achievements"].split(";"))
+
+    def challenge_score(row):
+        score = 0
+        if row["linked_goal"] in goals:
+            score += 2
+        if row["linked_achievement"] not in achievements and pd.notna(row["linked_achievement"]):
+            score += 1
+        return score
+
+    challenges_df["score"] = challenges_df.apply(challenge_score, axis=1)
+    top_challenges = challenges_df.sort_values("score", ascending=False).head(2)
+
+    # --- Next Module ---
+    path_modules = modules_df[modules_df["learning_path"] == user["current_path"]]
+    next_module = path_modules.sort_values("module_id").head(1)
+    recommended_module = modules_df.sort_values("popularity_score", ascending=False).head(1)
+
+    # --- Weekly Spending Chart ---
+    latest_day = df["Date"].max()
+    last_week_df = df[(df["Date"] >= latest_day - timedelta(days=6)) & (df["Amount"] < 0)]
+    daily_spend = last_week_df.groupby(df["Date"].dt.date)["Amount"].sum().abs().reset_index()
+    fig_spend = px.line(daily_spend, x="Date", y="Amount", markers=True,
+                        title="Spending Last 7 Days",
+                        color_discrete_sequence=["#22d3ee"])
+    fig_spend.update_layout(xaxis_title="", yaxis_title="Amount", showlegend=False)
+
+    # --- User Summary ---
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Streak", f"{user['streak_days']} days")
+    col2.markdown(f"[Tokens: {user['token_balance']}](#Shop)")
+    col3.metric("XP", f"{user['xp_points']}")
+
+    # --- Modules Section ---
+    st.markdown("### Your Next Module")
+    if not next_module.empty:
+        m = next_module.iloc[0]
+        st.markdown(f"**[{m['title']}](#Modules)**  \n{m['learning_path']} – {m['access_level'].capitalize()}")
+
+    st.markdown("### Recommended Module")
+    if not recommended_module.empty:
+        r = recommended_module.iloc[0]
+        st.markdown(f"**[{r['title']}](#Modules)**  \n{r['topic_area'].capitalize()} – Popularity: {r['popularity_score']}")
+
+    # --- Analytics Preview ---
+    st.markdown("### Weekly Snapshot")
+    st.plotly_chart(fig_spend, use_container_width=True)
+    st.markdown("[View full analytics ➜](#Analytics)")
+
+    # --- Challenges ---
+    st.markdown("### Weekly Challenges")
+    for _, ch in top_challenges.iterrows():
+        st.markdown(f"- **{ch['challenge_text']}**  \nXP: {ch['xp_reward']} | Tokens: {ch['token_reward']}")
+
+    st.markdown("### Community Challenge")
+    st.markdown(f"- **{community_challenge['challenge_text']}**  \nXP: {community_challenge['xp_reward']} | Tokens: {community_challenge['token_reward']}")
 
