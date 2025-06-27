@@ -254,11 +254,11 @@ elif page == "Modules":
     render_module_grid(recommended, "Recommended for You")
     render_module_grid(remaining, "Explore More Modules")
 elif page == "Shop":
-    st.title("🛍️ Centinel Shop")
+    st.title(" Centinel Shop")
 
     # --- Token Balance ---
     token_balance = int(user["token_balance"]) if "token_balance" in user else 0
-    st.markdown(f"### 💰 Your Token Balance: **{token_balance}**")
+    st.markdown(f"###  Your Token Balance: **{token_balance}**")
     st.markdown("---")
 
     # --- Unlock Module Key ---
@@ -274,7 +274,7 @@ elif page == "Shop":
     # --- Avatar Customisation (Not Available) ---
     st.markdown("""
     <div style='border: 2px solid #a855f7; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; background-color: #f3e8ff;color: #111827;'>
-        <h4>🧑‍🎨 Avatar Customisation</h4>
+        <h4> Avatar Customisation</h4>
         <p>Personalise your profile with visual upgrades.</p>
         <p><strong>Coming Soon</strong></p>
         <button disabled style='padding: 0.5rem 1rem; background-color: #9333ea; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Coming Soon</button>
@@ -282,7 +282,7 @@ elif page == "Shop":
     """, unsafe_allow_html=True)
 
     # --- Token Bundles ---
-    st.subheader("🪙 Buy More Tokens")
+    st.subheader(" Buy More Tokens")
     bundles = [
         {"tokens": 10, "price": 4.99},
         {"tokens": 50, "price": 19.99},
@@ -294,7 +294,7 @@ elif page == "Shop":
         with col:
             st.markdown(f"""
             <div style='border: 2px solid #38bdf8; border-radius: 12px; padding: 1rem; background-color: #f0f9ff; color: #0f172a;'>
-                <h4>🪙 {bundle["tokens"]} Tokens</h4>
+                <h4> {bundle["tokens"]} Tokens</h4>
                 <p style='margin: 0.2rem 0;'><strong>Price:</strong> €{bundle["price"]:.2f}</p>
                 <button disabled style='padding: 0.4rem 1rem; background-color: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Buy Now</button>
             </div>
@@ -313,9 +313,9 @@ elif page=='Friends':
         st.markdown(f"""
         <div style='border-left: 6px solid #4ade80; background-color: #f0fdf4; padding: 1rem 1.5rem; border-radius: 10px; margin-bottom: 1rem; color: #111827;'>
             <h4>{user["name"]}</h4>
-            <p><strong>🔥 Streak:</strong> {user["streak_days"]} days</p>
-            <p><strong>🎯 XP:</strong> {user["xp_points"]}</p>
-            <p><strong>🏆 Latest Achievement:</strong> {latest_achievement.replace("_", " ").capitalize()}</p>
+            <p><strong> Streak:</strong> {user["streak_days"]} days</p>
+            <p><strong> XP:</strong> {user["xp_points"]}</p>
+            <p><strong> Latest Achievement:</strong> {latest_achievement.replace("_", " ").capitalize()}</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -324,7 +324,7 @@ elif page=='Friends':
         render_friend(friend)
 
 elif page == "Profile":
-    st.title("🧾 Your Profile")
+    st.title("Your Profile")
 
     # --- Load Achievements List ---
     achievements_df = pd.read_csv("centinel_achievements_list.csv")
@@ -366,7 +366,7 @@ elif page == "Profile":
     st.markdown("---")
 
     # --- Achievements Display ---
-    with st.expander("🏆 Your Achievements"):
+    with st.expander(" Your Achievements"):
         unlocked = user["achievements"].split(";")
         col1, col2 = st.columns(2)
 
@@ -374,11 +374,11 @@ elif page == "Profile":
             st.subheader("Unlocked")
             for ach in achievements_df.itertuples():
                 if ach.id in unlocked:
-                    st.markdown(f"✅ **{ach.description}**  `({ach.category})`")
+                    st.markdown(f" **{ach.description}**  `({ach.category})`")
 
         with col2:
             st.subheader("Still to Unlock")
             for ach in achievements_df.itertuples():
                 if ach.id not in unlocked:
-                    st.markdown(f"🔒 *{ach.description}*  `({ach.category})`")
+                    st.markdown(f" *{ach.description}*  `({ach.category})`")
 
