@@ -15,7 +15,7 @@ page = st.sidebar.selectbox("Go to", list(PAGES.keys()))
 # --- Load Data ---
 df = pd.read_csv("fake_transactions.csv")
 df["Date"] = pd.to_datetime(df["Date"])
-user_df = pd.read_csv("centinel_user_data.csv")
+user_df = pd.read_csv("user_data.csv")
 user = user_df.iloc[0]
 modules_df = pd.read_csv("modules.csv")
 df_lists = pd.read_csv("centinel_goals_triggers_advice.csv")
@@ -299,3 +299,26 @@ elif page == "Shop":
                 <button disabled style='padding: 0.4rem 1rem; background-color: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Buy Now</button>
             </div>
             """, unsafe_allow_html=True)
+elif page=='Friends':
+    st.title("👥 My Friends")
+
+    # --- Load Friend Data ---
+    user2 = pd.read_csv("user2_data.csv").iloc[0]
+    user3 = pd.read_csv("user3_data.csv").iloc[0]
+    friends = [user2, user3]
+
+    # --- Friend Card Renderer ---
+    def render_friend(user):
+        latest_achievement = user["achievements"].split(";")[-1]
+        st.markdown(f"""
+        <div style='border-left: 6px solid #4ade80; background-color: #f0fdf4; padding: 1rem 1.5rem; border-radius: 10px; margin-bottom: 1rem; color: #111827;'>
+            <h4>{user["name"]}</h4>
+            <p><strong>🔥 Streak:</strong> {user["streak_days"]} days</p>
+            <p><strong>🎯 XP:</strong> {user["xp_points"]}</p>
+            <p><strong>🏆 Latest Achievement:</strong> {latest_achievement.replace("_", " ").capitalize()}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # --- Render Friends ---
+    for friend in friends:
+        render_friend(friend)
