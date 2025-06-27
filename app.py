@@ -322,3 +322,63 @@ elif page=='Friends':
     # --- Render Friends ---
     for friend in friends:
         render_friend(friend)
+
+elif page == "Profile":
+    st.title("🧾 Your Profile")
+
+    # --- Load Achievements List ---
+    achievements_df = pd.read_csv("centinel_achievements_list.csv")
+
+    # --- Profile Overview ---
+    st.markdown(f"**Name:** {user['name']}")
+    st.markdown(f"**Level:** {user['level'].capitalize()}")
+    st.markdown(f"**XP:** {user['xp_points']}")
+    st.markdown(f"**Streak:** {user['streak_days']} days")
+    st.markdown(f"**Token Balance:** {user['token_balance']}")
+    st.markdown(f"**Current Path:** {user['current_path']}")
+    if user['has_premium'] == True or str(user['has_premium']).lower() == "true":
+        st.success("Premium User")
+    st.markdown("---")
+
+    # --- Edit Profile Section ---
+    with st.expander("✏️ Edit Profile"):
+        updated_name = st.text_input("Update your name", value=user["name"])
+        
+        goal_options = [
+            "save_money", "get_financial_control", "start_investing", "reduce_debt", "spend_better",
+            "build_savings_buffer", "budget_consistently", "optimize_subscriptions", "boost_income",
+            "understand_credit", "avoid_scam_investments", "understand_current_events", "learn_finance_history",
+            "decode_inflation", "understand_investing_terms", "learn_wealth_inequality", "get_news_literacy"
+        ]
+        current_goals = user["goal_tags"].split(";")
+        updated_goals = st.multiselect("Select your goals", goal_options, default=current_goals)
+
+        # Premium toggle
+        premium_toggle = st.checkbox("Upgrade to Premium" if not user["has_premium"] else "Deactivate Premium", value=bool(user["has_premium"]))
+
+        if st.button("Save Changes"):
+            user_df.loc[0, "name"] = updated_name
+            user_df.loc[0, "goal_tags"] = ";".join(updated_goals)
+            user_df.loc[0, "has_premium"] = premium_toggle
+            user_df.to_csv("user_data.csv", index=False)
+            st.success("Profile updated! Changes will apply on next refresh.")
+
+    st.markdown("---")
+
+    # --- Achievements Display ---
+    with st.expander("🏆 Your Achievements"):
+        unlocked = user["achievements"].split(";")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("Unlocked")
+            for ach in achievements_df.itertuples():
+                if ach.id in unlocked:
+                    st.markdown(f"✅ **{ach.description}**  `({ach.category})`")
+
+        with col2:
+            st.subheader("Still to Unlock")
+            for ach in achievements_df.itertuples():
+                if ach.id not in unlocked:
+                    st.markdown(f"🔒 *{ach.description}*  `({ach.category})`")
+
