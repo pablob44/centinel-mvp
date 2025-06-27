@@ -467,10 +467,29 @@ elif page == "Overview":
     col3.metric("XP", f"{user['xp_points']}")
 
     # --- Modules Section ---
+   # --- Score Modules Based on Goals and Triggers ---
+    def score_module(row):
+        m_goals = set(row["goal_tags"].split(";"))
+        m_trigs = set(row["behavior_triggers"].split(";"))
+        return len(m_goals & goals) + len(m_trigs & triggers)
+    
+    modules_df["score"] = modules_df.apply(score_module, axis=1)
+    top_scored_module = modules_df.sort_values("score", ascending=False).head(1)
+    
+    # --- Next Module in Learning Path ---
+    path_modules = modules_df[modules_df["learning_path"] == user["current_path"]]
+    next_module = path_modules.sort_values("module_id").head(1)
+    
+    # --- Display Modules ---
     st.markdown("### Your Next Module")
     if not next_module.empty:
         m = next_module.iloc[0]
-        st.markdown(f"**[{m['title']}](#Modules)**  \n{m['learning_path']} – {m['access_level'].capitalize()}")
+        st.markdown(f"**{m['title']}**  \n{m['learning_path']} – {m['access_level'].capitalize()}")
+    
+    st.markdown("### Recommended Module for You")
+    if not top_scored_module.empty:
+        top_m = top_scored_module.iloc[0]
+        st.markdown(f"**{top_m['title']}**  \n{top_m['learning_path']} – {top_m['access_level'].capitalize()}  \nXP: {top_m['xp_value']} | Duration: {top_m['duration_minutes']} min")
 
     # --- Analytics Preview ---
     st.markdown("### Weekly Snapshot")
