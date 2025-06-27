@@ -19,4 +19,4 @@ token_balance_over_100,Engagement,Collected over 100 tokens
 friend,Engagement,Make a friend
 Xp,Engagement,Reach 500 XP
 Xp2,Engagement,Reach 1000 XP
-path,Engagement,Complete a learning path
+path,Learning,Complete a learning path
