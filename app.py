@@ -34,7 +34,7 @@ df["Date"] = pd.to_datetime(df["Date"])
 user = user_df.iloc[0]
 modules_df = pd.read_csv("modules.csv")
 df_lists = pd.read_csv("centinel_goals_triggers_advice.csv")
-if page != "Overview":
+if page != "Overview" or "Analytics":
     st.sidebar.markdown("---")
     st.sidebar.header(f"Welcome, {user['name']}")
     st.sidebar.markdown(f"Level: {user['level'].capitalize()}")
