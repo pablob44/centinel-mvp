@@ -34,6 +34,12 @@ df["Date"] = pd.to_datetime(df["Date"])
 user = user_df.iloc[0]
 modules_df = pd.read_csv("modules.csv")
 df_lists = pd.read_csv("centinel_goals_triggers_advice.csv")
+if page != "Overview":
+    st.sidebar.markdown("---")
+    st.sidebar.header(f"Welcome, {user['name']}")
+    st.sidebar.markdown(f"Level: {user['level'].capitalize()}")
+    st.sidebar.markdown(f"XP: {user['xp_points']} | Streak: {user['streak_days']} days")
+
 
 # --- Timeframes ---
 today = df["Date"].max()
