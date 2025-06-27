@@ -10,12 +10,28 @@ PAGES = {
     "Friends": "friends",
     "Profile": "profile"
 }
-page = st.sidebar.selectbox("Go to", list(PAGES.keys()))
+st.sidebar.markdown("## Navigation")
+page = st.sidebar.radio("", list(PAGES.keys()))
 
-# --- Load Data ---
-df = pd.read_csv("fake_transactions.csv")
+# Optional: highlight current page with a subtle color (pseudo-style)
+def highlight(label):
+    return f"<span style='color:#22d3ee;font-weight:bold'>{label}</span>"
+
+ferent pkferent pk
+
+# --- User Selection ---
+USER_FILES = {
+    "Jorge": {"user": "user_data.csv", "transactions": "fake_transactions.csv"},
+    "Sofia": {"user": "user2_data.csv", "transactions": "fake_transactions2.csv"}
+}
+
+with st.sidebar:
+    selected_user = st.selectbox("Switch User", list(USER_FILES.keys()), index=0)
+
+# --- Load Selected User Data ---
+user_df = pd.read_csv(USER_FILES[selected_user]["user"])
+df = pd.read_csv(USER_FILES[selected_user]["transactions"])
 df["Date"] = pd.to_datetime(df["Date"])
-user_df = pd.read_csv("user_data.csv")
 user = user_df.iloc[0]
 modules_df = pd.read_csv("modules.csv")
 df_lists = pd.read_csv("centinel_goals_triggers_advice.csv")
@@ -299,29 +315,36 @@ elif page == "Shop":
                 <button disabled style='padding: 0.4rem 1rem; background-color: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: not-allowed;'>Buy Now</button>
             </div>
             """, unsafe_allow_html=True)
-elif page=='Friends':
-    st.title("👥 My Friends")
+elif page == "Friends":
+    st.title(" My Friends")
 
-    # --- Load Friend Data ---
-    user2 = pd.read_csv("user2_data.csv").iloc[0]
-    user3 = pd.read_csv("user3_data.csv").iloc[0]
-    friends = [user2, user3]
+    # --- Load All Users ---
+    all_users = {
+        "U001": pd.read_csv("user_data.csv").iloc[0],
+        "U002": pd.read_csv("user2_data.csv").iloc[0],
+        "U003": pd.read_csv("user3_data.csv").iloc[0],
+    }
+
+    # --- Select only friends (exclude current user by user_id) ---
+    current_user_id = user["user_id"]  # Always available in user_df
+    friends = [data for uid, data in all_users.items() if uid != current_user_id]
 
     # --- Friend Card Renderer ---
-    def render_friend(user):
-        latest_achievement = user["achievements"].split(";")[-1]
+    def render_friend(friend_user):
+        latest_achievement = friend_user["achievements"].split(";")[-1]
         st.markdown(f"""
         <div style='border-left: 6px solid #4ade80; background-color: #f0fdf4; padding: 1rem 1.5rem; border-radius: 10px; margin-bottom: 1rem; color: #111827;'>
-            <h4>{user["name"]}</h4>
-            <p><strong> Streak:</strong> {user["streak_days"]} days</p>
-            <p><strong> XP:</strong> {user["xp_points"]}</p>
-            <p><strong> Latest Achievement:</strong> {latest_achievement.replace("_", " ").capitalize()}</p>
+            <h4>{friend_user["name"]}</h4>
+            <p><strong>Streak:</strong> {friend_user["streak_days"]} days</p>
+            <p><strong>XP:</strong> {friend_user["xp_points"]}</p>
+            <p><strong>Latest Achievement:</strong> {latest_achievement.replace("_", " ").capitalize()}</p>
         </div>
         """, unsafe_allow_html=True)
 
-    # --- Render Friends ---
-    for friend in friends:
-        render_friend(friend)
+    # --- Render All Friends ---
+    for f in friends:
+        render_friend(f)
+
 
 elif page == "Profile":
     st.title("Your Profile")
