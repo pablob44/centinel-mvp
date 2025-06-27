@@ -1,0 +1,41 @@
+challenge_id,challenge_text,linked_goal,linked_trigger,linked_achievement,estimated_difficulty,xp_reward
+CH001,Set a €25 mini-goal for get_financial_control by Sunday.,get_financial_control,unstable_income,,easy,50
+CH002,Switch one Investments expense to a cheaper/free alternative.,avoid_scam_investments,subscription_overlap,,hard,50
+CH003,Revisit your budgeting method — does it align with save_money?,save_money,no_budgeting_history,,medium,30
+CH004,Set a €25 mini-goal for decode_inflation by Sunday.,decode_inflation,subscription_overlap,,easy,100
+CH005,Watch one video about budgeting strategies and summarize it in your notes.,understand_investing_terms,high_spending,portfolio_diversified,hard,50
+CH006,Set a €25 mini-goal for get_news_literacy by Sunday.,get_news_literacy,unstable_income,,hard,50
+CH007,Set a €25 mini-goal for avoid_scam_investments by Sunday.,avoid_scam_investments,low_savings,,medium,50
+CH008,Watch one video about budgeting strategies and summarize it in your notes.,learn_finance_history,low_savings,,medium,30
+CH009,Use a visual tracker (spreadsheet/app) to log understand_credit progress.,understand_credit,no_budgeting_history,high_spending_detected,easy,50
+CH010,Use a visual tracker (spreadsheet/app) to log learn_finance_history progress.,learn_finance_history,high_spending,,easy,100
+CH011,Try a no-spend challenge in your Dining Out category.,understand_investing_terms,low_savings,used_token,easy,100
+CH012,Compare two products or services tied to Subscriptions.,avoid_scam_investments,unstable_income,,hard,50
+CH013,Increase your Savings amount by €25 this week.,decode_inflation,no_budgeting_history,,medium,100
+CH014,Revisit your budgeting method — does it align with boost_income?,boost_income,subscription_overlap,,medium,50
+CH015,Watch one video about inflation and summarize it in your notes.,understand_investing_terms,unstable_income,completed_5_modules,easy,30
+CH016,Increase your Subscriptions amount by €10 this week.,understand_current_events,unstable_income,budget_created,easy,30
+CH017,Skip takeaway this week — cook 3 times instead.,understand_investing_terms,high_spending,budget_created,hard,70
+CH018,Check last month's Groceries spending — lower it by 5%.,understand_credit,new_investment_activity,no_budgeting_history,medium,100
+CH019,Increase your Entertainment amount by €25 this week.,learn_finance_history,new_investment_activity,,hard,30
+CH020,Avoid spending more than €5 on Clothing this week.,budget_consistently,frequent_withdrawals,high_spending_detected,easy,100
+CH021,Review your Groceries habits and cancel one recurring payment.,avoid_scam_investments,unstable_income,new_investment_activity,hard,50
+CH022,Track every Savings expense this week to build awareness.,get_financial_control,low_savings,,hard,50
+CH023,Use a visual tracker (spreadsheet/app) to log understand_credit progress.,understand_credit,new_investment_activity,,hard,70
+CH024,Try a no-spend challenge in your Clothing category.,optimize_subscriptions,frequent_withdrawals,completed_10_modules,medium,70
+CH025,Watch one video about budgeting strategies and summarize it in your notes.,understand_current_events,no_budgeting_history,,medium,70
+CH026,Find a free online tool that supports your get_news_literacy goal.,get_news_literacy,low_savings,,easy,100
+CH027,Switch one Savings expense to a cheaper/free alternative.,save_money,no_budgeting_history,new_investment_activity,easy,70
+CH028,Watch one video about ethical investing and summarize it in your notes.,get_news_literacy,high_spending,,hard,30
+CH029,Compare two products or services tied to Entertainment.,save_money,high_spending,,medium,50
+CH030,Set a €15 mini-goal for get_news_literacy by Sunday.,get_news_literacy,frequent_withdrawals,,hard,30
+CH031,Complete 1 module related to boost_income.,boost_income,subscription_overlap,,medium,100
+CH032,Watch one video about crypto risks and summarize it in your notes.,understand_current_events,low_savings,,medium,30
+CH033,Check last month's Savings spending — lower it by 5%.,learn_finance_history,low_savings,,medium,70
+CH034,Switch one Savings expense to a cheaper/free alternative.,start_investing,unstable_income,,medium,30
+CH035,Log into your investment account and add €25.,learn_wealth_inequality,new_investment_activity,,easy,30
+CH036,Review your Investments habits and cancel one recurring payment.,get_financial_control,unstable_income,high_spending_detected,medium,100
+CH037,Check credit or interest rate terms related to learn_finance_history.,learn_finance_history,frequent_withdrawals,new_investment_activity,medium,30
+CH038,Avoid spending more than €20 on Entertainment this week.,boost_income,high_spending,completed_10_modules,medium,50
+CH039,Revisit your budgeting method — does it align with boost_income?,boost_income,crypto_interest,new_investment_activity,easy,50
+CH040,Review your Dining Out habits and cancel one recurring payment.,optimize_subscriptions,no_budgeting_history,,medium,30
