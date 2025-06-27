@@ -1,16 +1,22 @@
 id,category,description
 budget_created,Budgeting,Created your first budget
-no_budgeting_history,Budgeting,No budget detected yet
+stick_to_budget,Budgeting,Stick to your budget for 1 month
+stick_to_budget3,Budgeting,Stick to your budget for 3 months
 completed_5_modules,Learning,Completed 5 learning modules
 completed_10_modules,Learning,Completed 10 learning modules
-used_token,Spending,Used a token to unlock content
-low_savings_detected,Savings,Saved less than recommended
+used_token,Spending,Use tokens to unlock content
+low_savings_detected,Savings,Save more than last month
 emergency_fund_created,Savings,Built your emergency fund
-high_spending_detected,Spending,Spent aggressively in a single week
+cancel_3_subscriptions, Spending, Cancel 3 unused subscriptions 
 invested_in_crypto,Investing,Made a crypto investment
 new_investment_activity,Investing,First-time investing recorded
 portfolio_diversified,Investing,Diversified your investment portfolio
 streak_7_days,Engagement,Maintained a 7-day streak
 streak_14_days,Engagement,Maintained a 14-day streak
 token_balance_over_20,Engagement,Collected over 20 tokens
-premium_upgrade,Engagement,Upgraded to Premium
+token_balance_over_50,Engagement,Collected over 50 tokens
+token_balance_over_100,Engagement,Collected over 100 tokens
+friend,Engagement,Make a friend
+Xp,Engagement,Reach 500 XP
+Xp2,Engagement,Reach 1000 XP
+path,Engagement,Complete a learning path
