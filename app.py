@@ -17,12 +17,11 @@ page = st.sidebar.radio("", list(PAGES.keys()))
 def highlight(label):
     return f"<span style='color:#22d3ee;font-weight:bold'>{label}</span>"
 
-ferent pkferent pk
 
 # --- User Selection ---
 USER_FILES = {
-    "Jorge": {"user": "user_data.csv", "transactions": "fake_transactions.csv"},
-    "Sofia": {"user": "user2_data.csv", "transactions": "fake_transactions2.csv"}
+    "U001": {"user": "user_data.csv", "transactions": "fake_transactions.csv"},
+    "U002": {"user": "user2_data.csv", "transactions": "fake_transactions2.csv"}
 }
 
 with st.sidebar:
