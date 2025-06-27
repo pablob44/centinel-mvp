@@ -1,74 +1,127 @@
-# centinel-mvp
-# Centinel – Technical Overview
+# Centinel – Technical Architecture & Logic
 
-Centinel is a fully modular personal finance application built in Python using Streamlit. It simulates a complete user experience around financial literacy, behavior tracking, and adaptive learning. The app was developed for a master's project to explore how structured financial behaviors and goals can inform content recommendations and engagement strategies.
+Centinel is a fully modular Streamlit-based MVP designed to simulate a personalized financial literacy platform. It combines behavioral detection, goal-driven content recommendations, token-based progression, and real-time user feedback — all built from scratch using Python, `pandas`, and structured `.csv` data.
 
-The app is routed through a sidebar selector with six main pages: Overview, Analytics, Modules, Shop, Friends, and Profile. Each page is implemented as a block within a single `app.py` file and uses conditional rendering. All data is stored in flat `.csv` files, which are loaded once per session and—when necessary—rewritten directly to preserve user changes (such as editing goals or updating premium status). The MVP supports one user at a time, simulating a personal finance experience end-to-end without requiring user authentication or backend services.
+The app functions as a local-first prototype, supporting one user per session and writing updates directly into flat files. The logic is built into a single `app.py` with a dynamic routing mechanism that renders one of six main pages: Overview, Analytics, Modules, Shop, Friends, and Profile. All personalization flows from data inputs and behavioral patterns, not hardcoded content.
 
-## Personalization and User Modeling
+## User Modeling and State
 
-The personalization system is grounded in the user’s stored data (`user_data.csv`). This includes their `goal_tags`, `current_path`, `xp_points`, `streak_days`, `achievements`, and `has_premium` status. Goal tags are used throughout the app to match content to the user's intentions. These goals span a range of financial priorities, such as “save_money”, “start_investing”, and “understand_current_events”. At runtime, this list is parsed and compared with each module's metadata.
+User state is managed via `user_data.csv`. This file holds the active user’s XP, streak, token balance, premium status, selected goals, and current learning path. These values are accessed on load and are writable from the Profile page. Once the user edits their name, premium status, or goal selections, changes are instantly saved to the CSV and reflected across pages.
 
-The user profile is editable via the Profile page. Users can update their name, toggle premium access, and select or deselect their goal tags via a Streamlit multiselect widget. Changes are immediately written back to the CSV, which ensures that goal-based module recommendations and challenge scoring update across the app with the next session refresh.
+All personalization — including module recommendations, challenge selection, and advice — is determined from a combination of `goal_tags`, `behavioral_triggers` detected in recent activity, and missing achievements.
 
-## Behavioral Trigger Detection
+## Behavioral Trigger Detection and Prioritization
 
-The behavioral engine is the core logic behind the Analytics and Overview pages. It processes the last three months of transactions stored in `fake_transactions.csv`. This synthetic dataset mimics categorized financial activity including salary, subscriptions, investments, cash withdrawals, and discretionary spending.
+The app uses synthetic financial activity (`fake_transactions.csv`) to detect key financial behaviors through rule-based conditions. It scans the past three months of categorized transactions — including savings, investments, subscriptions, and spending — and applies weekly checks for each of eight defined behavioral triggers:
 
-To simulate behavioral analysis, a set of predefined rules is used to detect the presence of specific triggers each week. Examples include:
+- `high_spending`
+- `low_savings`
+- `frequent_withdrawals`
+- `unstable_income`
+- `crypto_interest`
+- `subscription_overlap`
+- `no_budgeting_history`
+- `new_investment_activity`
 
-- High discretionary spending if total dining out exceeds €150 in a week.
-- Low savings behavior if total savings is below €20.
-- Frequent withdrawals if 3+ ATM-like merchants are used in a week.
-- Subscription overlap if multiple new subscriptions appear in the same week.
+Each trigger is evaluated weekly over the past three weeks. A dictionary tracks the persistence of each trigger (e.g. a trigger active in all 3 weeks scores highest). The top three persistent triggers are used throughout the system: to deliver advice, rank modules, and suggest challenges.
 
-These rules are applied across three rolling weekly windows to track persistence. The three most persistent triggers across the past three weeks are selected for personalized advice, module filtering, and analytics visuals. This logic is encapsulated in a `detect_triggers()` function and a dictionary called `persistence`, which accumulates counts of each active trigger over time.
+Separately, the system also identifies **newly activated triggers** — those that appear in the current week but were not active a month ago. These are evaluated for **severity** using heuristics (e.g., total subscription amount, number of withdrawals) and drive the selection of the visualized trigger chart in the Analytics page. If no new trigger exists, it falls back to the most persistent one.
+
+## Module Recommendation Logic
+
+Modules are stored in `modules.csv` and tagged with `goal_tags`, `behavior_triggers`, learning path, access level, exclusivity, and popularity score.
+
+Each module is scored during session runtime using a custom function:
+
+- +1 point for every goal tag that matches the user’s selected goals
+- +1 point for every trigger tag that matches the user’s active behavioral triggers
+
+This produces a dynamic score per module. In the Analytics and Overview pages, the top 3 modules (by score) are shown as “Recommended for You”. In the full Modules page, the five highest scoring modules are grouped separately.
+
+Modules are presented in four ordered groups:
+
+1. **Next in path** – The next module in the user’s `current_path`, determined by the lowest unused `module_id`
+2. **Featured modules** – Hardcoded promotional content
+3. **Recommended modules** – Score-based, dynamic each session
+4. **Remaining modules** – Sorted by difficulty level (beginner → advanced)
+
+Modules use color-coded styling:
+- Core path modules: varying shades of green
+- Featured modules: gold
+- External modules: purple (always free)
+- Premium modules (flagged as `premium_or_token`): show a lock icon and require premium or tokens to unlock
+
+## Advice Engine
+
+Advice is determined by the top three persistent triggers from the past three weeks. These are mapped 1:1 to short behavioral nudges stored in `centinel_goals_triggers_advice.csv`. Only the advice for the most persistent triggers is shown; no scoring or rotation is applied. The advice is shown in the Analytics page beneath the charts and is intended to be low-effort, behaviorally grounded, and visually secondary.
+
+## Challenge Prioritization Engine
+
+Challenges are stored in `challenges.csv`, each tagged with:
+- A linked goal (optional)
+- A linked trigger (optional)
+- A required achievement (optional)
+- XP and token rewards
+- Difficulty level
+
+Each challenge is scored per session using a weighted function:
+
+- +2 points if the linked goal is in the user’s goals
+- +1 if the linked trigger matches an active trigger
+- +1 if the linked achievement has not been unlocked yet
+
+The two highest-scoring challenges are shown on the Overview page as “Weekly Challenges.” A third “Community Challenge” is statically defined and does not depend on user data. These challenges are not yet claimable, but the scaffolding for rewards and visual tracking is implemented.
 
 ## Analytics Page Architecture
 
-The Analytics page renders all behavioral insights and decision logic based on the financial data. It begins by identifying which triggers are newly activated this week but were not present a month ago. If multiple new triggers are found, the one with the highest severity is used to drive a dedicated visual. Severity is calculated based on the intensity of the behavior: for instance, high cash withdrawal frequency, low total savings, or overlapping subscriptions.
+The Analytics page is the most data-intensive section of the MVP. It pulls in:
+- All behavioral trigger scores and persistence counts
+- Weekly and daily spending patterns
+- Category breakdowns for the past week (pie chart)
+- Daily spending values (line chart)
+- Area charts showing proportions of spending, saving, and investing
+- A dedicated behavioral line chart tied to a single trigger (if newly activated), or the most persistent trigger otherwise
 
-Once the best behavioral trigger is selected, the page displays a visual specific to that metric. For example:
-- For spending: line chart of daily spending totals.
-- For subscriptions: line chart of amount spent on subscription merchants.
-- For savings: line chart of daily savings amounts.
+This visual component adjusts based on which trigger has surfaced most recently or with highest severity, using the rules defined in the `trigger_severity()` function.
 
-In addition to the trigger visual, the Analytics page renders a pie chart of total spending by category, a line chart for daily spending across the past week, and an area chart comparing spending, saving, and investing behaviors over time. These are built using Plotly Express, allowing minimal and responsive interactivity.
+Advice and top 3 modules (scored as described earlier) are rendered at the bottom of this page. Sidebar content is also populated with trigger persistence summaries and user metadata.
 
-Finally, the Analytics page shows the top three triggers with their persistence count and uses a mapping file (`centinel_goals_triggers_advice.csv`) to generate one actionable piece of advice per active trigger.
+## Other Pages
 
-## Module Scoring and Recommendation System
+### Overview
 
-Modules are stored in `modules.csv` and tagged by goal relevance (`goal_tags`), trigger relevance (`behavior_triggers`), access level, and path. When the app loads, a custom scoring function evaluates each module for a given user session. The function adds:
-- One point per matching user goal tag
-- One point per match with active triggers
+A condensed homepage that includes:
+- User’s streak, XP, and token balance
+- Their next module in the learning path
+- Their top recommended module (by popularity)
+- A summary line chart of spending over the past week
+- Top 2 weekly challenges + the current community challenge
 
-Modules with a score above zero are considered recommended. The top three scoring modules are displayed in the Analytics and Overview pages. In the Modules page, the five highest scoring modules are rendered in a “Recommended for You” section. This ensures the app surface adapts based on recent user behavior.
+Modules and analytics previews are clickable and direct the user to those pages via link-style markdown.
 
-Additionally, each module belongs to a `learning_path` such as “Budgeting Basics” or “Investing Starters”. A path-aware sort function is used to determine the user’s next module in that path by ordering `module_id`s. Featured modules are highlighted separately and shown in gold, while external modules are styled differently and always free.
+### Shop
 
-## Challenges and Progression Logic
+Displays token balance and available in-app purchases:
+- Unlock key for premium modules (10 tokens)
+- Avatar customization (coming soon)
+- Token bundles (10/50/100) with realistic euro pricing
 
-The app introduces challenge dynamics via `challenges.csv`, which includes around 40 weekly challenges. Each challenge is tagged with an optional goal, trigger, and achievement ID. For each user session, the app scores the challenge dataset based on two criteria:
-- Does the user have the linked goal?
-- Has the user already unlocked the linked achievement?
+This page is styled using custom HTML blocks and uses placeholder buttons without live purchase logic.
 
-This produces a ranked list of challenge candidates. The top two are displayed in the Overview page as personalized weekly challenges. A third, global “community challenge” is selected manually and hardcoded into the app to ensure variety across weeks.
+### Profile
 
-Each challenge has XP and token rewards, although there is no claiming mechanic implemented in the MVP.
+Allows user to update:
+- Name
+- Goals (via multiselect)
+- Premium status (toggle)
 
-## Module Rendering and Access Control
+Also includes an Achievements section. This compares the user’s unlocked `achievement_ids` (from `user_data.csv`) to the full list (`centinel_achievements_list.csv`) and splits them into “Unlocked” and “Still to Unlock” groups.
 
-Modules are rendered in visually distinct boxes based on their type:
-- Core modules (based on a learning path) use shades of green.
-- Featured modules are colored gold.
-- External modules are purple and always free.
+### Friends
 
-Premium modules (marked by the `exclusive` field) show a lock icon and can only be accessed with a key (Shop logic) or premium status. While no unlocking logic is implemented, these visuals and tags are functional and simulate access gating.
+Loads two additional mock users from `user2_data.csv` and `user3_data.csv`. Shows their streak, XP, and most recent achievement. No interactivity is implemented.
 
-## Streamlit Design Philosophy
+---
 
-All elements are built using native Streamlit and minimal custom CSS through `unsafe_allow_html=True` blocks. Pages are self-contained and only share state through the top-level loaded CSVs. All visuals update in real time based on data manipulation in pandas. There is no session state persistence beyond what's stored in the CSVs, which simplifies the app’s internal model while preserving a consistent user experience.
-
-The codebase avoids unnecessary abstraction or function calls in favor of transparency. Each page reads like a narrative from raw data loading to visual output, with behavioral logic and scoring functions embedded inline for clarity.
+Centinel is designed as a rule-based simulation of a behavioral finance app that adapts learning content, feedback, and challenges to the user’s recent activity and progress. It demonstrates how lightweight logic and CSV-based persistence can produce a rich personalized experience with minimal infrastructure.
 
