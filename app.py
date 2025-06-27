@@ -10,7 +10,7 @@ PAGES = {
     "Friends": "friends",
     "Profile": "profile"
 }
-st.sidebar.image("Centinel (1).png", use_column_width=True)  # <--- Put your logo file here
+st.sidebar.image("centinel.png", use_column_width=True)  # <--- Put your logo file here
 st.sidebar.markdown("## Navigation")
 
 page = st.sidebar.radio("", list(PAGES.keys()))
