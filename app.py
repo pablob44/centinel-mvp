@@ -466,8 +466,6 @@ elif page == "Overview":
         m = next_module.iloc[0]
         st.markdown(f"**[{m['title']}](#Modules)**  \n{m['learning_path']} – {m['access_level'].capitalize()}")
 
-    st.markdown("### Recommended Module")
-    top_modules = modules_df.sort_values("score", ascending=False).head(1)
     # --- Analytics Preview ---
     st.markdown("### Weekly Snapshot")
     st.plotly_chart(fig_spend, use_container_width=True)
