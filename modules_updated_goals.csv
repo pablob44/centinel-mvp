@@ -1,0 +1,31 @@
+module_id,title,type,learning_path,access_level,exclusive,featured,topic_area,goal_tags,behavior_triggers,xp_value,duration_minutes,popularity_score
+M302,Budgeting 101,core,Budgeting Basics,beginner,free,False,budgeting,reduce_debt;get_financial_control,low_savings;no_budgeting_history,48,3,8.4
+M729,Track Your Spending Habits,core,Budgeting Basics,beginner,free,False,budgeting,get_news_literacy;learn_finance_history,crypto_interest,33,5,7.0
+M728,Emergency Funds Explained,core,Saving Smarter,beginner,free,False,saving,grow_wealth;learn_finance_history,low_savings,39,7,9.2
+M667,How to Start Saving Consistently,core,Saving Smarter,intermediate,free,False,saving,start_investing;build_savings_buffer,new_investment_activity;frequent_withdrawals,65,5,7.7
+M776,Investing 101: Risk vs Reward,core,Intro to Investing,intermediate,free,False,investing,get_news_literacy;learn_finance_history,new_investment_activity;frequent_withdrawals,37,8,8.5
+M904,What Are ETFs?,core,Intro to Investing,intermediate,free,False,investing,reduce_debt;learn_wealth_inequality,no_budgeting_history,74,7,8.9
+M690,Your First Credit Card,core,Credit & Debt,intermediate,free,False,credit,save_money;get_news_literacy,no_budgeting_history,70,3,8.6
+M704,How to Avoid Debt Traps,core,Credit & Debt,intermediate,free,False,debt,learn_finance_history;get_news_literacy,low_savings,85,8,6.4
+M412,Money & Motivation: Mindset Basics,core,Financial Mindset,beginner,free,False,mindset,get_news_literacy;save_money,frequent_withdrawals;crypto_interest,80,4,9.0
+M618,Impulse Spending & How to Stop,core,Financial Mindset,intermediate,free,False,lifestyle,understand_current_events;optimize_subscriptions,no_budgeting_history,51,6,6.5
+M380,Understanding Your Bank Statement,core,Budgeting Basics,beginner,free,False,budgeting,grow_wealth;boost_income,no_budgeting_history;low_savings,89,10,7.1
+M290,Zero-Based Budgeting Method,core,Budgeting Basics,intermediate,free,False,budgeting,understand_current_events;spend_better,no_budgeting_history,66,10,8.3
+M894,Compound Interest for Beginners,core,Intro to Investing,intermediate,free,False,investing,understand_current_events;budget_consistently,low_savings;frequent_withdrawals,33,4,8.5
+M380,Rebuilding After Financial Mistakes,core,Financial Mindset,advanced,free,False,mindset,get_news_literacy;understand_investing_terms,low_savings,56,7,8.5
+M901,Credit Scores Demystified,core,Credit & Debt,intermediate,free,False,credit,spend_better;understand_credit,no_budgeting_history,55,6,8.7
+M683,Why Gen Z is Broke (and What to Do),featured,,intermediate,premium_or_token,True,mindset,start_investing;understand_current_events,high_spending;low_savings,51,3,6.3
+M904,Spain’s Digital Euro – Should You Care?,featured,,beginner,premium_or_token,True,investing,get_news_literacy;grow_wealth,frequent_withdrawals,81,5,8.9
+M990,AI & Your Wallet: Passive Income or Pipe Dream?,featured,,advanced,premium_or_token,True,investing,understand_current_events;decode_inflation,high_spending;no_budgeting_history,52,3,6.0
+M536,Quick Wins: Saving €50 this Weekend,featured,,beginner,premium_or_token,True,saving,spend_better;get_news_literacy,high_spending,80,5,7.5
+M175,Master Your Money: 30-Day Challenge,core,,intermediate,premium_or_token,False,budgeting,reduce_debt;avoid_scam_investments,high_spending;low_savings,53,3,8.5
+M302,Side Hustle Secrets: Build Income Now,core,,advanced,premium_or_token,False,income,get_news_literacy;save_money,low_savings,96,5,6.8
+M303,Crypto Deep Dive: What to Trust,core,,beginner,premium_or_token,False,investing,save_money,frequent_withdrawals,49,9,7.2
+M379,Beat the Banks: Advanced Saving Tactics,core,,intermediate,premium_or_token,False,saving,spend_better,crypto_interest;frequent_withdrawals,63,6,6.1
+M638,Debt Snowball vs Avalanche: What Works?,core,,beginner,premium_or_token,False,debt,get_news_literacy;learn_finance_history,low_savings;no_budgeting_history,32,8,7.6
+M901,Crash Course: Inflation Explained,external,,beginner,premium_or_token,True,mindset,learn_finance_history;get_financial_control,frequent_withdrawals;new_investment_activity,79,6,7.4
+M902,How Credit Cards Really Work,external,Credit & Debt,beginner,premium_or_token,False,mindset,start_investing;reduce_debt,high_spending;no_budgeting_history,50,6,7.4
+M903,Avoiding Finance FOMO,external,,beginner,free,False,financial_literacy,get_news_literacy;learn_finance_history,new_investment_activity;high_spending,75,4,8.3
+M904,The 2008 Crisis in 5 Minutes,external,Financial Mindset,intermediate,free,False,financial_literacy,get_news_literacy;understand_current_events,crypto_interest;low_savings,59,7,7.9
+M905,Banking Terms You Should Know,featured,,intermediate,free,False,financial_literacy,reduce_debt;get_news_literacy,crypto_interest;frequent_withdrawals,49,4,9.4
+M906,Why Everyone’s Talking About Interest Rates,featured,,intermediate,free,False,credit,learn_finance_history;spend_better,no_budgeting_history;crypto_interest,65,8,7.7
